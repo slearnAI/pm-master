@@ -5,7 +5,7 @@
 ## 收益登记
 | ID | 描述 | 衡量口径 | 目标 | 基线 | 已核实 | 责任人 | 计划实现日 | 状态 |
 |----|------|---------|------|------|--------|--------|------------|------|
-| {{#each benefits}}
+{{#each benefits}}
 | {{this.id}} | {{this.description}} | {{this.metric}} | {{this.target}} | {{this.baseline}} | {{this.realized}} | {{this.owner}} | {{this.realization_date}} | {{this.status}} |
 {{/each}}
 

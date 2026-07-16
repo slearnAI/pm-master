@@ -37,7 +37,7 @@ def slugify(name):
     return s.strip('-') or 'project'
 
 
-def build_skeleton(name, ptype, methodology, framework):
+def build_skeleton(name, ptype, methodology, framework, domain='', product=''):
     today = datetime.date.today().isoformat()
     return {
         'schema_version': 1,
@@ -49,6 +49,10 @@ def build_skeleton(name, ptype, methodology, framework):
             'framework': framework if methodology == 'agile' else None,
             'phase': '启动' if ptype == 'project' else '组合定义',
             'status': '规划中',
+            'lifecycle_state': 'planning',
+            'baselined_on': None,
+            'domain': domain,
+            'product': product,
             'created': today,
             'start_date': None,
             'target_end': None,
@@ -63,6 +67,10 @@ def build_skeleton(name, ptype, methodology, framework):
         'artifacts': {},
         'raid': {'risks': [], 'assumptions': [], 'issues': [], 'dependencies': []},
         'metrics': {'evm': {}, 'burndown': []},
+        'wbs': [],
+        'milestones': [],
+        'actuals': {},
+        'control': {},
         'program': (
             {'projects': [], 'dependencies': [], 'benefits': []}
             if ptype == 'program' else None
@@ -77,6 +85,8 @@ def main():
     ap.add_argument('--methodology', default='agile',
                     choices=['waterfall', 'agile', 'iteration', 'hybrid'])
     ap.add_argument('--framework', default='scrum', choices=['scrum', 'kanban'])
+    ap.add_argument('--domain', default='', help="领域标签，如 insurance-data-lake / payments，用于专家调度领域特化")
+    ap.add_argument('--product', default='', help="产品名，用于专家调度特化（缺 domain 时作为兜底）")
     ap.add_argument('--base', default=BASE, help="工作区根目录")
     a = ap.parse_args()
 
@@ -90,7 +100,8 @@ def main():
     os.makedirs(os.path.join(root, 'reports'))
     os.makedirs(os.path.join(root, 'artifacts'))
 
-    skeleton = build_skeleton(a.name, a.type, a.methodology, a.framework)
+    skeleton = build_skeleton(a.name, a.type, a.methodology, a.framework,
+                              domain=a.domain, product=a.product)
     with open(os.path.join(root, 'project.yaml'), 'w', encoding='utf-8') as f:
         if yaml:
             yaml.safe_dump(skeleton, f, allow_unicode=True, sort_keys=False)

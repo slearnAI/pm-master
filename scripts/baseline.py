@@ -38,8 +38,10 @@ CONSISTENCY = os.path.join(HERE, 'consistency_check.py')
 
 
 def load(path):
+    if yaml is None:
+        raise RuntimeError("需要 PyYAML，请先 pip install pyyaml")
     with open(path, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f) if yaml else eval(f.read())
+        return yaml.safe_load(f)
 
 
 def save(path, data):

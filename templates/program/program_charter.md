@@ -38,7 +38,7 @@
 ## 里程碑摘要（Milestones）
 | ID | 里程碑 | 计划日期 | 责任人 |
 |----|--------|----------|--------|
-| {{#each program.milestones}}
+{{#each program.milestones}}
 | {{this.id}} | {{this.name}} | {{this.date}} | {{this.owner}} |
 {{/each}}
 

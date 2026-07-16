@@ -5,7 +5,7 @@ license: MIT
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep
 metadata:
   display_name: "PM Master · 项目与项目群管理"
-  version: "1.0.0"
+  version: "1.1.0"
   category: productivity
 ---
 
@@ -64,7 +64,7 @@ metadata:
 | 多独立产物（如启动需 章程+WBS+排期+风险+RACI） | **team（组队并行）** | TeamCreate 派 `planner/risk/stakeholder/...` 专职子 Agent 并行；主控聚合 + 一致性校验 |
 | 需完整上下文接力（如"接着上次的风险分析继续"） | **fork（续上下文）** | 用 fork 模式派出子 Agent，继承本会话全部上下文 |
 
-> 完整调度逻辑、分类决策树、子 Agent brief 模板见 `references/orchestration.md` 与 `references/agents.md`。
+> **TeamCreate** 是本环境的多 Agent 并发派发机制（Agent 工具的 team 模式）：主控在**同一条消息**里派出多个 `general-purpose` 子 Agent，各带一份自包含 brief 并行产出，再由主控聚合 + 一致性校验。子 Agent 角色定义与 brief 模板见 `references/agents.md`，调度决策树见 `references/orchestration.md`。
 
 ## 4. 意图 → 产物 路由速查
 
@@ -81,6 +81,12 @@ metadata:
 | 运营控制（Operational） | `control_engine.py`（周期巡检对照基线）+ 产物 common/control_report；必要时 common/change_request 重基线 |
 
 ## 5. 脚本速查（位于本技能 `scripts/` 目录，与此 SKILL.md 同级）
+
+> ⚠️ **脚本异常处理（务必遵守）**：所有脚本依赖 `<SKILL_DIR>/scripts/`，用 `python3` 运行；若脚本缺失、路径错误或参数非法，**不要静默失败**——给出具体报错，并按下述顺序**降级**：
+> 1. 用 `project_state.py` 直接读写/初始化 `project.yaml`（单一事实源不依赖渲染脚本）；
+> 2. 用 `render.py` 直接渲染模板产出 Markdown 交付物（跳过分析类脚本）；
+> 3. 报 `需要 PyYAML` 时先 `pip install pyyaml` 再重试。
+> 一致性门禁 `consistency_check.py` 失败即**阻断交付**，须先修复致命项再继续。
 
 ```bash
 SKILL_DIR=<本技能目录>   # 例如 /root/.codebuddy/skills/pm-master
@@ -144,6 +150,7 @@ python3 $SKILL_DIR/scripts/project_state.py get project.phase --file /workspace/
 | `references/expert-roles.md` | 第二层领域专家调度：角色目录 + 子 Agent system prompt |
 | `references/activity-expert-map.md` | 活动→角色路由、domain/product 专家特化、叶子包颗粒度标准 |
 | `references/lifecycle.md` | 需要阶段-交付物矩阵、生命周期总览时 |
+| `references/project-schema.md` | 需要 `project.yaml` 完整字段结构、必填项约定、子 Agent 协同规则时 |
 | `references/methodology-waterfall.md` | waterfall 项目 |
 | `references/methodology-agile.md` | agile 项目（Scrum/Kanban） |
 | `references/methodology-iteration.md` | iteration 项目 |

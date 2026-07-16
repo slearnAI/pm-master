@@ -183,11 +183,11 @@ program:    { projects[], dependencies[], benefits[] }   # 仅 type=program
 
 ## 6. 模板库总览
 
-共 **30 个可用模板** + 1 个共享片段 `_macros.md`，按目录组织：
+共 **35 个可用模板** + 1 个共享片段 `_macros.md`，按目录组织：
 
 | 目录 | 数量 | 模板 |
 |------|------|------|
-| `common/` | 11 | project_charter, stakeholder_register, raci, communication_plan, raid_log, risk_register, status_report, lessons_learned, closure_report, project_board, milestone_list |
+| `common/` | 16 | project_charter, stakeholder_register, raci, communication_plan, raid_log, risk_register, status_report, lessons_learned, closure_report, project_board, milestone_list, change_request, change_log, baseline_record, control_register, control_report |
 | `waterfall/` | 5 | requirements_spec, wbs, schedule_gantt, stage_gate_review, quality_plan |
 | `agile/` | 5 | product_backlog, sprint_plan, definition_of_done, burndown, retro |
 | `iteration/` | 3 | iteration_plan, iteration_backlog, iteration_review |
@@ -204,12 +204,16 @@ program:    { projects[], dependencies[], benefits[] }   # 仅 type=program
 
 | 脚本 | 用途 | 命令示例 |
 |------|------|----------|
-| `init_project.py` | 建工作区 + project.yaml | `python3 init_project.py "项目名" --type project --methodology agile --framework scrum` |
+| `init_project.py` | 建工作区 + project.yaml | `python3 init_project.py "项目名" --type project --methodology agile --framework scrum [--domain <领域> --product <产品>]` |
 | `render.py` | 模板 + 数据 → Markdown | `python3 render.py --template T --data D.yaml --out O.md` |
 | `render_docx.py` | Markdown → DOCX | `python3 render_docx.py O.md [--out O.docx]` |
 | `evm.py` | 挣值分析 | `python3 evm.py --data metrics.yaml` |
-| `schedule_health.py` | 关键路径 / 依赖 / 浮动 | `python3 schedule_health.py --data schedule.yaml [--start 2025-08-01]` |
-| `consistency_check.py` | 交付前质量门 | `python3 consistency_check.py --project <项目>/project.yaml` |
+| `schedule_health.py` | 关键路径 / 依赖 / 浮动 | `python3 schedule_health.py --project <项目>/project.yaml`（或 `--data schedule.yaml [--start 2025-08-01]`） |
+| `consistency_check.py` | 交付前质量门（控制级，exit 1=阻断） | `python3 consistency_check.py --project <项目>/project.yaml [--strict]` |
+| `baseline.py` | 计划冻结为基线（前置质量门） | `python3 baseline.py --freeze --project <项目>/project.yaml`；`--status` 查看状态 |
+| `control_engine.py` | 运营控制引擎（对照基线周期巡检，exit 1=有 RED 升级） | `python3 control_engine.py --project <项目>/project.yaml [--as-of 2026-08-12] [--json]` |
+| `dispatch.py` | 专家调度计划（审计 WBS 缺 role / 超阈值） | `python3 dispatch.py --project <项目>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]` |
+| `rollup_program_wbs.py` | 项目群 WBS 两层化（里程碑级 / 组件级） | `python3 rollup_program_wbs.py <项目群>/project.yaml [--derive-actuals]` |
 | `project_state.py` | 单一事实源读写 | `python3 project_state.py get project.phase --file project.yaml` |
 
 > 渲染引擎 `render.py` 支持的语法子集：`{{ project.name }}` 变量、`{{#each list}}…{{this.x}}…{{/each}}` 循环、

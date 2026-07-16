@@ -80,3 +80,24 @@
 
 `control_register.md` 是运营期开局必须产出的"常规控制清单"：定义**检查什么、频次、责任人、触发条件、上一次结果**。
 它把 5.1 的七项控制固化为可审计的运营纪律，缺项时一致性门禁会告警。
+
+### 5.3 项目群阶段 ↔ 状态机映射，与退出 operational
+
+**方法论阶段 ≠ 生命周期状态机，二者是正交的两层。** 状态机（`lifecycle_state`：planning→review→baselined→operational→closed）是**方法论无关**的强制纪律，覆盖所有类型与所有方法论；方法论阶段（五阶段 / 迭代循环 / Sprint 循环 / 宏微双层）是**节奏层**，落在状态机之内。
+
+| 类型 | 方法论阶段（节奏层） | 在状态机中的落位 |
+|------|----------------------|------------------|
+| 项目 | 启动 → 规划 → 执行 → 监控 → 收尾 | 启动/规划 ⊆ planning；评审 ⊆ review；**执行+监控 ⊆ operational**（须先 baselined 过控制门）；收尾 ⊆ closed |
+| 项目群 | 组合定义 → 组合交付 → 组合收尾 | 组合定义 ⊆ planning；**组合交付 ⊆ baselined→operational**（组件各自仍走自身状态机，组合层只治理依赖/协同/收益）；组合收尾 ⊆ closed |
+
+> **operational 与"监控"阶段的关系**：`operational` 是**受控执行的机制状态**（已冻结基线、`control_engine.py` 周期巡检）；"监控"是 operational 期间持续进行的**活动**。即：进入执行/监控阶段 ⟺ `lifecycle_state=operational`，二者同时发生，并非先 operational 后 monitor。
+
+**退出 operational（→ closed）的出口条件**（任一类型都满足后方可关闭）：
+
+1. 全部交付物已验收签字（项目：`closure_report`；项目群：各组件 `closure_report` + 组合收尾）；
+2. `lessons_learned` 已沉淀；
+3. 项目群：收益已核实/实现（`program.benefits[].realized` 与 `status` 闭环）；
+4. 无未决 RED 升级（`control_engine.py` 退出码 0）且无 open 变更请求（`change_log` 全关闭）；
+5. 由主控将 `project.lifecycle_state` 置为 `closed`（可经 `project_state.py set`）。
+
+> 仍未基线化（缺 `baseline` 指针）的 waterfall / hybrid 项目**不得**进入 operational；已 operational 但未满足上述出口条件**不得**置 closed——状态机不可跳步。

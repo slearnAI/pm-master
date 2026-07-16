@@ -5,7 +5,7 @@
 
 | CR 编号 | 日期 | 类型 | 描述 | 影响（范围/进度/成本/风险） | CCB 结论 | 状态 |
 |---------|------|------|------|------------------------------|----------|------|
-| {{#each changes}}
+{{#each changes}}
 | {{this.id}} | {{this.date}} | {{this.type}} | {{this.description}} | {{this.impact}} | {{this.decision}} | {{this.status}} |
 {{/each}}
 

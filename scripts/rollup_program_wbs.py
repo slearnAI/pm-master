@@ -22,6 +22,10 @@ PM Master · 项目群 WBS 两层化（tagged single-source model）
 只重写 project.yaml 的 `wbs:`（及可选的 `actuals.wbs_progress:`）块，其余段落与
 注释完整保留；执行前自动备份为 <project.yaml>.bak-<date>。
 
+> 组件 / 阶段映射（`COMPONENT_MAP` / `PHASE_NAME`）为**示例默认值**（取自某保险数据湖项目）。
+> 生产环境请在 `project.yaml` 提供 `program.components`（SOW id → 组件 slug）与
+> `governance.waves`（阶段 key → 阶段名），引擎优先使用项目级配置，缺省才回退示例并告警。
+
 用法：
   python3 rollup_program_wbs.py <program/project.yaml>
   python3 rollup_program_wbs.py <program/project.yaml> --derive-actuals
@@ -33,6 +37,8 @@ import datetime
 import collections
 import yaml
 
+# 示例默认值（取自某保险数据湖项目）。生产环境请改用 project.yaml 的
+# program.components / governance.waves，见下方 COMPONENT_MAP_EFF / PHASE_NAME_EFF。
 COMPONENT_MAP = {
     'P0': 'pmo-program-management',
     'SOW1': 'sow1-data-modelling',
@@ -53,6 +59,9 @@ PHASE_NAME = {
     'W3': 'Wave 3 FSAS 分析结构',
     'W4': 'Wave 4 NOS 归档与集成',
 }
+# 运行时生效映射：由 main() 按 project.yaml 覆盖；缺省回退示例。
+COMPONENT_MAP_EFF = dict(COMPONENT_MAP)
+PHASE_NAME_EFF = dict(PHASE_NAME)
 P0_KEYWORD = [
     ('章程', 'Charter'), ('方法', 'Charter'),
     ('治理', 'Governance'), ('RACI', 'Governance'),
@@ -91,7 +100,7 @@ def build_milestone(top, phase, items, prev_id, label=None):
     ends = [parse_date(i.get('end')) for i in items]
     s = min([x for x in starts if x], default=None)
     e = max([x for x in ends if x], default=None)
-    name = label if label else PHASE_NAME.get(phase, phase)
+    name = label if label else PHASE_NAME_EFF.get(phase, phase)
     mid = f"{top}-{label}" if label else f"{top}-{phase}"
     dlv = ' / '.join(str(i.get('deliverable', '')) for i in items[:3] if i.get('deliverable'))
     row = {
@@ -101,7 +110,7 @@ def build_milestone(top, phase, items, prev_id, label=None):
         'milestone': True,
         'tier': 'program',
         'summary': False,
-        'component': COMPONENT_MAP.get(top, top.lower()),
+        'component': COMPONENT_MAP_EFF.get(top, top.lower()),
         'deliverable': dlv[:160],
         'owner': items[0].get('owner', ''),
         'estimate': est,
@@ -142,7 +151,10 @@ def find_block(path, key_line):
 def rewrite_wbs_block(path, new_wbs):
     start, end, lines = find_block(path, 'wbs:')
     if start is None:
-        raise RuntimeError('未找到 wbs: 块')
+        # 骨架无 wbs: 块（如旧版 init 产物）时，整文件末尾追加，保证兼容
+        lines.append('\nwbs:\n')
+        start = len(lines) - 1
+        end = len(lines) - 1
     dumped = yaml.safe_dump(new_wbs, allow_unicode=True, sort_keys=False,
                             default_flow_style=False)
     block = ['wbs:\n'] + [dumped]
@@ -196,6 +208,23 @@ def main():
     doc = yaml.safe_load(open(path, encoding='utf-8'))
     wbs = doc.get('wbs', [])
 
+    # 组件 / 阶段映射：优先取项目级配置，缺省回退示例并告警（解耦硬编码）
+    prog = doc.get('program') or {}
+    gov = doc.get('governance') or {}
+    comp_override = prog.get('components') if isinstance(prog.get('components'), dict) else None
+    wave_override = (gov.get('waves') if isinstance(gov.get('waves'), dict) else None) or \
+                    (prog.get('waves') if isinstance(prog.get('waves'), dict) else None)
+    if comp_override:
+        COMPONENT_MAP_EFF.update(comp_override)
+    else:
+        print("[rollup] 警告：未提供 program.components，使用内置示例 COMPONENT_MAP（保险数据湖）。"
+              "生产请在 project.yaml 配置 program.components（SOW id → 组件 slug）。", file=sys.stderr)
+    if wave_override:
+        PHASE_NAME_EFF.update(wave_override)
+    else:
+        print("[rollup] 警告：未提供 governance.waves，使用内置示例 PHASE_NAME。"
+              "生产请在 project.yaml 配置 governance.waves（阶段 key → 阶段名）。", file=sys.stderr)
+
     # 幂等保护：若已存在 tier:program 的里程碑汇总包，视为已两层化，
     # 不再重新生成（避免重复 / 误把里程碑当 summary）。
     already = any(w.get('milestone') and w.get('tier') == 'program' for w in wbs)
@@ -212,12 +241,12 @@ def main():
             w['tier'] = 'program'
             w['summary'] = True
             top = wid.split('.')[0]
-            w['component'] = COMPONENT_MAP.get(top, top.lower())
+            w['component'] = COMPONENT_MAP_EFF.get(top, top.lower())
             summaries.append(w)
         else:
             top = wid.split('.')[0]
             w['tier'] = 'component'
-            w['component'] = COMPONENT_MAP.get(top, top.lower())
+            w['component'] = COMPONENT_MAP_EFF.get(top, top.lower())
             leaves.append(w)
 
     by_top = collections.OrderedDict()

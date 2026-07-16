@@ -20,7 +20,7 @@ _色带：绿 1–4 ｜ 黄 5–9 ｜ 橙 10–15 ｜ 红 16–25_
 
 | ID | 描述 | 类别 | 可能性 | 影响 | 评分 | 严重度 | 责任人 | 应对措施 | 状态 |
 |----|------|------|--------|------|------|--------|--------|----------|------|
-| {{#each risks}}
+{{#each risks}}
 | {{this.id}} | {{this.description}} | {{this.category}} | {{this.likelihood}} | {{this.impact}} | {{this.score}} | {{this.severity}} | {{this.owner}} | {{this.mitigation}} | {{this.status}} |
 {{/each}}
 

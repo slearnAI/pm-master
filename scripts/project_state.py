@@ -127,6 +127,10 @@ def main():
                 'framework': a.framework if a.methodology == 'agile' else None,
                 'phase': '启动' if a.type == 'project' else '组合定义',
                 'status': '规划中',
+                'lifecycle_state': 'planning',
+                'baselined_on': None,
+                'domain': '',
+                'product': '',
                 'start_date': None,
                 'target_end': None,
                 'objectives': [],
@@ -140,6 +144,10 @@ def main():
             'artifacts': {},
             'raid': {'risks': [], 'assumptions': [], 'issues': [], 'dependencies': []},
             'metrics': {'evm': {}, 'burndown': []},
+            'wbs': [],
+            'milestones': [],
+            'actuals': {},
+            'control': {},
             'program': {'projects': [], 'dependencies': [], 'benefits': []} if a.type == 'program' else None,
         }
         _save(path, skeleton)

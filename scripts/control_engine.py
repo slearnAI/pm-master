@@ -39,8 +39,10 @@ CONSISTENCY = os.path.join(HERE, 'consistency_check.py')
 
 
 def load(path):
+    if yaml is None:
+        raise RuntimeError("需要 PyYAML，请先 pip install pyyaml")
     with open(path, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f) if yaml else eval(f.read())
+        return yaml.safe_load(f)
 
 
 def run(cmd):
@@ -275,6 +277,27 @@ def compute(data, bdata, as_of):
                      'key': 'change'})
     if len(open_changes) >= open_change_high:
         escalations.append('open_change_high')
+
+    # ---------- 6b. 控制门纪律（lifecycle_state 技术强制）----------
+    # 贴合 lifecycle.md §5：waterfall/hybrid 须 planning→baselined→operational 强制串行。
+    # 控制引擎只在 operational 下做正式巡检；未进入则告警（AMBER），不误报为 RED 升级。
+    ls = str((data.get('project') or {}).get('lifecycle_state') or 'planning').lower()
+    if ls == 'operational':
+        gate_status = 'GREEN'
+        gate_detail = '已通过控制门，处于运营控制阶段（lifecycle_state=operational），控制引擎正常巡检。'
+    elif ls == 'baselined':
+        gate_status = 'AMBER'
+        gate_detail = ('已基线化但未置 lifecycle_state=operational；本次仍按基线对照，'
+                       '但正式运营控制须先经控制门将 lifecycle_state 置为 operational。')
+    else:
+        gate_status = 'AMBER'
+        gate_detail = (f'当前 lifecycle_state={ls}，尚未进入运营控制阶段；'
+                       f'控制引擎应在 operational 下运行'
+                       f'（先 baseline.py --freeze → 控制门 → operational）。')
+    controls.append({'name': '控制门 Gate', 'status': gate_status,
+                     'detail': gate_detail, 'key': 'gate'})
+    if ls != 'operational':
+        escalations.append('gate_not_operational')
 
     # ---------- 7. 数据完整性 Integrity ----------
     chk = run([CONSISTENCY, '--project', project_path_global])
