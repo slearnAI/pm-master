@@ -1,0 +1,82 @@
+# 项目 / 项目群生命周期与阶段-交付物矩阵
+
+## 1. 项目生命周期（通用五阶段，方法论决定节奏）
+
+| 阶段 | 目标 | 关键交付物（模板） | 出口准则 |
+|------|------|--------------------|----------|
+| **启动** | 立项、定目标与边界 | project_charter, stakeholder_register, raci | 章程获批、sponsor/pm 到位 |
+| **规划** | 拆范围、排期、识风险 | wbs / product_backlog / iteration_plan, schedule_gantt, risk_register, raid_log, communication_plan | 计划基线确立 |
+| **执行** | 交付增量/成果 | 迭代/冲刺产出、变更记录 | 按计划推进 |
+| **监控** | 跟踪偏差、控风险 | status_report, burndown, 更新 risk/raid | 偏差可控、风险受管 |
+| **收尾** | 验收、复盘、移交 | closure_report, lessons_learned | 验收签字、经验沉淀 |
+
+> 各方法论对"阶段"的切分不同：waterfall 是串行阶段门；agile 是持续增量 + Sprint 循环；
+> iteration 是时间盒迭代循环；hybrid 是宏阶段（门）+ 微迭代。详见对应 methodology 文件。
+
+## 2. 项目群（Program）生命周期
+
+| 阶段 | 目标 | 关键交付物（模板） |
+|------|------|--------------------|
+| **组合定义** | 定义愿景、收益、组件边界 | program_charter, benefits_realization |
+| **组合交付** | 治理组件、管依赖、促协同 | portfolio_dashboard, dependency_map, 组合 risk/raid |
+| **组合收尾** | 收益核实、组合复盘 | benefits 核实报告, 组合 lessons_learned |
+
+## 3. 阶段-交付物速查（按 intent）
+
+| intent | 必产出 | 推荐脚本 |
+|--------|--------|----------|
+| 规划/启动 | charter + stakeholder + raci + (wbs/backlog) | init_project, render |
+| 构建计划 | wbs/backlog + schedule + risk + raid | render, schedule_health |
+| 风险 | risk_register + raid_log | render, consistency_check |
+| 汇报 | status_report (+ burndown) | render, evm |
+| 分析 | —— | evm, schedule_health, consistency_check |
+| 治理(群) | program_charter + portfolio_dashboard + dependency_map + benefits_realization | render |
+
+## 4. 单一事实源联动
+
+所有阶段产物最终都回写 `project.yaml`：
+- `project.*`：元数据、阶段、范围
+- `artifacts.*`：各产物文件路径索引
+- `raid.*`：风险/假设/问题/依赖（持续更新）
+- `metrics.*`：EVM、燃尽数据
+- `program.*`：仅项目群，含组件/依赖/收益
+
+## 5. 项目状态机：规划 → 基线 → 运营控制（核心纪律）
+
+**规划（Planning）与运营化（Operationalization）不是二选一，而是强制串行的两个阶段，二者必须同时存在：**
+先完成规划，经评审批准成为**已基线化的项目计划**，再通过**控制门**把项目推进到**运营/控制阶段**，
+之后由 **PM 控制引擎**周期性运行既定检查，确保项目按基线预期运行。
+
+| 状态 (project.lifecycle_state) | 含义 | 入口条件 | 关键动作 / 产物 | 出口 |
+|------|------|----------|----------------|------|
+| `planning` | 规划中（默认） | 项目立项 | 产出 draft 计划：charter / WBS / 排期 / 风险 / 估算 / RAID | 计划完成、评审通过 |
+| `review` | 评审/批准中 | 计划就绪 | 阶段门评审（stage_gate_review）：范围/估算/风险/治理逐条核对 | 批准（或退回 planning） |
+| `baselined` | 已基线化 | 评审批准且一致性门禁 exit 0 | `baseline.py --freeze`：冻结 wbs/风险/里程碑/metrics 为基线快照 → `baselines/<date>.yaml`；产出 `baseline_record` + `control_register` | 控制门放行 |
+| `operational` | 运营/控制中 | 控制门通过（进入 执行/监控 阶段） | **PM 控制引擎**周期性运行（见下）；持续更新 `actuals` + `raid` + `change_log` | 阶段收尾 |
+| `closed` | 已收尾 | 验收签字、收益核实 | closure_report / lessons_learned | —— |
+
+> **纪律（不可跳过）**：未基线化（无 `baseline` 指针）的 waterfall / hybrid 项目**不得**进入 执行/监控 阶段；
+> 一致性门禁会在 `phase ∈ {执行, 监控, 收尾}` 且 `methodology ∈ {waterfall, hybrid}` 且无 `baseline` 时**直接阻断**。
+
+### 5.1 运营控制循环（PM 控制引擎做什么）
+
+进入 `operational` 后，`control_engine.py` 按 `control.cadence` 周期性对照**基线**运行以下**常规控制项**
+（即"确保项目按预期运行的必要定期任务与检查"），任一项突破阈值即升级告警：
+
+| 控制项 | 对照基线计算 | 默认升级阈值 |
+|--------|--------------|--------------|
+| 进度控制 (Schedule) | 各 WBS 包"按计划% vs 实际%"偏差；逾期天数 | 实际落后计划 ≥ `schedule_slip_pct`(默认15%) 或已逾期未完成 |
+| 成本/挣值 (EVM) | SPI = EV/PV、CPI = EV/AC、EAC/ETC/VAC | SPI<`spi_warn`(0.95) 或 CPI<`cpi_warn`(0.95) |
+| 风险漂移 (Risk Drift) | 当前风险评分 vs 基线评分；新增红/严重风险 | 任一风险评分升级 或 出现新增红/严重风险 |
+| 里程碑 (Milestone) | 里程碑日期已过且未完成 | 逾期未完成 |
+| 问题 (RAID Issues) | 问题 due 已过且未关闭 | 逾期未关闭 |
+| 变更 (Change) | 未决变更请求数量 | 未决数 ≥ `open_change_high`(默认2) |
+| 数据完整性 (Integrity) | 重跑 consistency_check | 门禁失败 |
+
+引擎输出 `control_report.md` + 结构化 JSON，并带**退出码**（任一 RED 升级 → exit 1），
+可直接挂到定时任务 / 自动化（automation）做周期性巡检与告警。
+
+### 5.2 控制登记册（Control Register）
+
+`control_register.md` 是运营期开局必须产出的"常规控制清单"：定义**检查什么、频次、责任人、触发条件、上一次结果**。
+它把 5.1 的七项控制固化为可审计的运营纪律，缺项时一致性门禁会告警。

@@ -1,0 +1,151 @@
+project:
+  name: 支付重构
+  phase: 规划中
+  start_date: 2024-01-01
+  target_end: 2024-04-30
+sprint:
+  num: 3
+wbs:
+  - id: w1
+    name: 需求调研
+    level: 1
+    deliverable: 需求规格书
+    owner: 产品经理
+    estimate: 10
+    duration: 10
+    start: 2024-01-01
+    end: 2024-01-12
+    dependsOn: ""
+  - id: w2
+    name: 方案设计
+    level: 1
+    deliverable: 架构方案
+    owner: 架构师
+    estimate: 8
+    duration: 8
+    start: 2024-01-15
+    end: 2024-01-26
+    dependsOn: w1
+  - id: w3
+    name: 核心开发
+    level: 1
+    deliverable: 可运行版本
+    owner: 研发组长
+    estimate: 30
+    duration: 30
+    start: 2024-01-29
+    end: 2024-03-15
+    dependsOn: w2
+  - id: w4
+    name: 上线验收
+    level: 1
+    deliverable: 生产环境
+    owner: 测试经理
+    estimate: 12
+    duration: 12
+    start: 2024-03-18
+    end: 2024-04-05
+    dependsOn: w3
+tasks:
+  - id: t1
+    name: 需求评审
+    duration: 3
+    deps: ""
+    start: 2024-01-01
+    end: 2024-01-04
+    milestone: false
+  - id: t2
+    name: 设计评审
+    duration: 4
+    deps: t1
+    start: 2024-01-08
+    end: 2024-01-12
+    milestone: true
+  - id: t3
+    name: 迭代开发
+    duration: 20
+    deps: t2
+    start: 2024-01-15
+    end: 2024-02-09
+    milestone: false
+  - id: t4
+    name: 上线
+    duration: 2
+    deps: t3
+    start: 2024-04-01
+    end: 2024-04-03
+    milestone: true
+burndown:
+  - day: 1
+    remaining: 24
+    ideal: 24
+  - day: 2
+    remaining: 22
+    ideal: 21
+  - day: 3
+    remaining: 19
+    ideal: 18
+  - day: 4
+    remaining: 20
+    ideal: 15
+  - day: 5
+    remaining: 14
+    ideal: 12
+  - day: 6
+    remaining: 10
+    ideal: 9
+  - day: 7
+    remaining: 6
+    ideal: 6
+  - day: 8
+    remaining: 3
+    ideal: 3
+  - day: 9
+    remaining: 1
+    ideal: 0
+dependencies:
+  - id: d1
+    from: 订单服务
+    to: 支付服务
+    type: 接口
+    status: 进行中
+    blocker: 否
+  - id: d2
+    from: 支付服务
+    to: 风控服务
+    type: 决策
+    status: 规划中
+    blocker: 是
+  - id: d3
+    from: 风控服务
+    to: 账务服务
+    type: 数据
+    status: 已完成
+    blocker: 否
+governance:
+  parts:
+    - name: 核心交易
+      methodology: waterfall
+      gate: GA-评审
+      decision_owner: CTO
+    - name: 商户台
+      methodology: agile
+      gate: Sprint 评审
+      decision_owner: 产品VP
+    - name: 数据平台
+      methodology: hybrid
+      gate: 阶段门
+      decision_owner: 数据负责人
+  principles:
+    - 关口未过不得进入下一阶段
+    - 混合部分按各自方法论度量，统一健康度上报
+map:
+  - macro_milestone: M1 交易闭环
+    micro_iteration: I1 下单
+    alignment_status: 已对齐
+  - macro_milestone: M1 交易闭环
+    micro_iteration: I2 支付
+    alignment_status: 已对齐
+  - macro_milestone: M2 风控上线
+    micro_iteration: I3 风控规则
+    alignment_status: 有偏差
