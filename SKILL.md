@@ -5,7 +5,7 @@ license: MIT
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep
 metadata:
   display_name: "PM Master · 项目与项目群管理"
-  version: "1.2.2"
+  version: "1.3.0"
   category: productivity
 ---
 
@@ -131,6 +131,10 @@ python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.ya
 # 阶段门引擎单测套件（CI 门禁，覆盖 4 方法论 × 软/硬门，66 断言）
 python3 $SKILL_DIR/scripts/test_gate_engine.py
 
+# 对外邮件审批门：按角色解析收件人（communication.contacts[]），强制 --approve 后委派后端，写审计
+python3 $SKILL_DIR/scripts/comm_send.py --project /workspace/<slug>/project.yaml --to "sponsor,pm" --subject "里程碑达成" --body-file draft.md --approve "张三(PM)"  # 发送
+python3 $SKILL_DIR/scripts/comm_send.py --project /workspace/<slug>/project.yaml --to ops@corp.com --subject "周报" --body-file draft.md --approve "张三(PM)" --dry-run  # 复核不发
+
 # 专家调度计划：审计 WBS，标出缺 role 标签 / 超阈值的包，并特化推荐专家（多 Agent 第二层）
 python3 $SKILL_DIR/scripts/dispatch.py --project /workspace/<slug>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]
 
@@ -152,6 +156,8 @@ python3 $SKILL_DIR/scripts/project_state.py get project.phase --file /workspace/
 - **规划 ≠ 运营化（强制串行状态机）**：waterfall / hybrid 必须先 规划→评审→`baseline.py --freeze`（冻结计划为基线）→ 控制门 → 才能进入 执行/监控。未基线化（缺 `baseline` 指针）一致性门禁**直接阻断**。
 - **运营控制循环**：进入 `operational` 后按 `control.cadence` 周期跑 `control_engine.py`，对照基线巡检；状态 RED（任一升级项）退出码 1，可挂定时任务 / 自动化做周期巡检与告警。基线漂移需重基线者走 change_request。
 - **阶段流转须过阶段门（强制，不可跳步）**：`启动→规划→执行→监控→收尾` 按状态机串行推进；进入 `执行`（G1→2 控制门）与 `收尾`（G3→4 收尾门）为**硬门**，须经 `gate_engine.py` 评估且自动化准则全过、由 sponsor 审批后才翻转 `lifecycle_state`；`监控`（G2→3）为**软门**，由 PM 审批标记监控节奏。硬门不可跳过——各阶段的活动/交付物/入口出口准则/审批清单见 `references/phases/*`，状态机与门禁映射见 `references/lifecycle.md §5/§6`。
+- **operational 双轨并行（P2 执行 + P3 监控）**：进入 `operational` 后，执行轨（领域专家 Agent 持续交付）与监控轨（`monitoring-agent` 周期跑 `control_engine.py` 并回流升级项）**多 Agent 并行**，共享 `project.yaml`+`baselines/` 且字段零冲突。编排见 `references/orchestration.md §3.4`。
+- **对外邮件须过审批门（强制，外部不可逆）**：正式邮件由 `communication-agent`（`references/agents.md §8`）起草，**必须**经 `scripts/comm_send.py --approve "<审批人>"` 显式审批后才发送，审计写入 `governance.communications[]`；`requires_send_approval` 等安全护栏在技能根 `config.yaml`（安装期策略），项目级 `communication.approval_override` **只能收紧、不能关闭**。未审批直接 `exit 1`，绝不外发。
 - **模板可扩展**：新增方法论/产物 = 加模板 + 在 `references/templates-index.md` 登记，无需改引擎。
 
 ## 7. 参考文档索引（按需读取）

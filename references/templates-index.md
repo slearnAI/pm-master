@@ -15,7 +15,7 @@
 | project_charter.md | project{name,type,methodology,objectives[],scope,out_of_scope,sponsor,pm,team[],start_date,target_end} | 项目章程 |
 | stakeholder_register.md | project{name,pm}, stakeholders[{name,role,interest,influence,engagement}] | 干系人登记册 |
 | raci.md | project{name}, raci[{activity,responsible,accountable,consulted,informed}] | RACI 矩阵 |
-| communication_plan.md | project{name}, comms[{audience,info,channel,frequency,owner}] | 沟通计划 |
+| communication_plan.md | project{name}, comms[{audience,info,channel,frequency,owner}], contacts[{name,role,org,email,phone,tz,note}] | 沟通计划（含相关方联络簿，定稿同步 project.yaml.communication.contacts[]） |
 | raid_log.md | project{name}, raid{risks[],assumptions[],issues[],dependencies[]} | RAID 日志 |
 | risk_register.md | project{name}, risks[{id,description,category,likelihood,impact,score,severity,owner,mitigation,status}] | 风险登记册（5×5 校准，须 severity） |
 | status_report.md | project{name,phase}, period, progress{summary,completed[],next[]}, metrics{cpi,spi,pv,ev,ac} , risks[], help[] | 状态报告 |

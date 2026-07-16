@@ -36,6 +36,7 @@ project:
   team: []                              # 成员列表
 governance:
   stage_gates: []                       # 阶段门清单（gate_engine.py 写入：{gate, from_phase, to_phase, on, by, decision, lifecycle_before, lifecycle_after, criteria[]}）
+  communications: []                    # 邮件发送审计（comm_send.py 写入：{ to[], subject, on, approved_by, backend, status }）
   cadence: ''                           # 评审/汇报节奏
 artifacts: {}                           # key -> 相对项目根的文件路径（产物索引）
 raid:
@@ -52,6 +53,13 @@ actuals: {}                             # 运营期实际进展：{ ev, ac, as_o
 control: {}                             # 运营控制：{ cadence, thresholds{}, recipients[] }
 baseline: null                          # 基线指针（baseline.py 写入）：{ file, on, by }
 program: null                          # 仅 type=program：{ projects[], dependencies[], benefits[] }
+communication:                         # 对外沟通/邮件（数据层；策略/护栏见技能根 config.yaml）
+  from: ''                              # 本项目发件人；留空回退 config.email.default_from
+  cadence: ''                           # 周期沟通节奏（如 weekly）
+  approval_override:                   # 仅可「收紧」审批，不能放宽/关闭安装期护栏
+    require_sponsor_cosign: false      # true=外部邮件须 sponsor 会签（approver 须含 sponsor）
+  contacts: []                         # 相关方联络簿（stakeholder-agent 从 communication_plan.md 同步）：
+                                        #   [{ name, role, org, email, phone, tz, note }]
 ```
 
 ---

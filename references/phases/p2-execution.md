@@ -63,5 +63,7 @@ python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.ya
 
 ## 8. 衔接
 
-- 本阶段与 **P3 监控**并发于 `operational`；偏差/风险由监控持续拉回基线。
+- 本阶段是 **operational 双轨**的「执行轨」：与 **P3 监控轨**（`monitoring-agent` 周期跑 `control_engine.py`）并发于 `operational`，
+  二者共享 `project.yaml`+`baselines/`、字段零冲突（执行轨写 `actuals`/`wbs_progress`/交付物，监控轨写控制/状态报告）。
+  偏差/风险由监控轨持续拉回基线，纠偏动作回流本轨。双轨编排见 `references/orchestration.md §3.4`。
 - 满足收尾出口（见 `p4-closeout.md §5`）后，经 **G3→4 收尾门** 翻 `closed`。

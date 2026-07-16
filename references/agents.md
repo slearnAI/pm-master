@@ -29,6 +29,7 @@
 - **输入**：`project.yaml`；`templates/common/stakeholder_register.md`、`templates/common/raci.md`、`templates/common/communication_plan.md`。
 - **输出**：`docs/stakeholder_register.md`、`docs/raci.md`、`docs/communication_plan.md`；回写 `project.sponsor` / `project.pm` / `project.team[]`。
 - **brief 要点**：sponsor 与 pm 必须明确（质量门强制项）。
+- **联络簿同步（关键）**：定稿 `communication_plan.md` 的「相关方联络簿」后，**必须把每一行同步进 `project.yaml` 的 `communication.contacts[]`**（用 `project_state.py set communication.contacts '<yaml>'`）。这是邮件沟通的机读收件人库——`communication-agent` / `comm_send.py` 只认 `project.yaml`，不解析 Markdown。字段：`{ name, role, org, email, phone, tz, note }`；`email` 必填。
 
 ## 5. reporter-agent（汇报 Agent）
 - **职责**：汇总进展，产出状态报告/复盘/收尾报告，计算健康度指标卡。
@@ -47,3 +48,27 @@
 - [ ] `consistency_check.py` 通过（风险有 owner/mitigation、pm/sponsor 已填、依赖完整）
 - [ ] `artifacts` 索引已回写
 - [ ] 必要时 `render_docx.py` 渲染正式文档
+
+## 8. communication-agent（沟通 / 邮件 Agent）
+
+> 正式邮件是**对外、不可逆、安全敏感**动作。本角色只负责起草与编排，**绝不自行外发**——
+> 任何发送都必须经显式审批（见 `scripts/comm_send.py` 的硬审批门与技能根 `config.yaml` 的 `requires_send_approval`）。
+
+- **职责**：基于沟通计划与联络簿，起草正式邮件（状态通知、里程碑提醒、风险升级、变更通知等），经审批后外发，并登记审计。
+- **输入**：`project.yaml` 的 `communication.contacts[]`（收件人库）、`config.yaml` 的 `email.*`（后端/发件人/审批护栏）、`templates/` 中可复用的通知模板（如 `status_report` / `closure_report` 摘要）。
+- **输出**：起草的邮件草稿（呈现给用户确认）；经审批后调用邮件技能/ `comm_send.py` 实际发送；发送记录写入 `governance.communications[]`（审计：`to / subject / on / approved_by / backend / status`）。
+- **标准流程（强制）**：
+  1. **起草**：按角色解析收件人（如 `sponsor,pm` → 查 `communication.contacts[]` 得邮箱），写正文。
+  2. **呈现待批**：把「收件人 + 主题 + 正文摘要」交给用户/PM，**等待显式 approve**。
+  3. **审批后发送**：`python3 $SKILL_DIR/scripts/comm_send.py --project <项目>/project.yaml --to <角色或邮箱> --subject "..." --body-file <草稿.md> --approve "张三(PM)"`。未带 `--approve` 或被安装护栏要求 sponsor 会签而 approver 不含 sponsor → 脚本直接 `exit 1`，**不发**。
+  4. **审计**：发送成功/ dry-run 后，`comm_send.py` 自动追加一条 `governance.communications` 记录，供追溯。
+- **brief 要点**：邮件正文必须含项目名与明确的行动项/截止；外部邮件（收件人不在 `contacts` 内或 `approval_override.require_sponsor_cosign=true`）须升级到 sponsor 会签；任何情况下不得绕过审批门。
+
+## 9. monitoring-agent（监控 / 控制 Agent）
+
+> operational 双轨的「监控轨」（见 `references/orchestration.md §3.4`）。与执行轨并行，只负责"盯"，不产交付物本身。
+
+- **职责**：按 `control.cadence` 周期跑 `control_engine.py` 对照基线巡检；产出 `status_report` / `control_report`；滚动更新 `risk_register` / `raid_log` / `milestone_list`；对 RED 升级项回报主控。
+- **输入**：`project.yaml`（须已 `operational` 且 `baseline.file` 存在）、`baselines/`、各产物。
+- **输出**：`reports/status_report.md`、`artifacts/control_report.md`、`risks/raid_log.md`（滚动）；回写 `raid.risks[]` / `raid.issues[]` 状态。
+- **brief 要点**：只读基线、写控制/状态报告与 RAID 更新，**不碰**执行轨的交付物；发现 RED 升级立即回流主控，由主控路由纠偏回执行轨。

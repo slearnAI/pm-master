@@ -65,6 +65,7 @@
 | 敏捷启动 | planner(产品Backlog) · risk(风险+RAID) · stakeholder(干系人+RACI) |
 | 阶段评审 | reporter(状态报告) · risk(风险更新) · scheduler(排期更新) |
 | 项目群启动 | program(组合章程+看板) · risk(组合风险) · dependency(依赖图) |
+| **operational 双轨（P2+P3 并行）** | **执行轨** domain-expert(叶子包/增量) · **监控轨** monitoring-agent(control_engine 周期巡检+状态报告+RAID 滚动+升级回流) |
 
 ## 3.3 第二层：领域专家调度（Expert Dispatch）
 
@@ -86,6 +87,30 @@ SOW 级粗粒度。这是本技能"多 Agent"的真正含义——按活动的**
 
 > 经验团队的 WBS 不是 10 个 SOW 包，而是数百个叶子包——这是靠领域专家逐域拆解出来的，
 > 而非 PM-generalist 一个人拍脑袋。本第二层就是把这个纪律固化进工作流与质量门。
+
+## 3.4 operational 双轨：P2 执行轨 + P3 监控轨并行
+
+进入 `operational`（G1→2 控制门之后，waterfall/hybrid 已 `baseline.py --freeze`），**执行与监控并非串行，
+而是同处 `operational` 的两条并行 Agent 轨道**（详见 `references/lifecycle.md §5.3` 与 `references/phases/p2-execution.md`、`p3-monitoring.md`）。
+主控在一次 TeamCreate 消息里**同时派出两轨**，让"做"与"盯"并发：
+
+- **Track A · 执行轨（P2）**：领域专家子 Agent（经 `dispatch.py` 调度的 `expert-roles.md` 角色）持续产出叶子工作包/增量，
+  写 `actuals` / `wbs_progress` / 交付物，走变更控制（CCB）。
+- **Track B · 监控轨（P3）**：专职 `monitoring-agent` 按 `control.cadence` 周期跑 `control_engine.py`，产出 `status_report` /
+  `control_report`，滚动 `risk_register` / `raid_log` / `milestone_list`，对 RED 升级项**回流主控**。
+
+**共享事实源、字段零冲突**（这正是能并行而无锁的关键）：
+
+| 轨道 | 读 | 写 | 不碰 |
+|------|----|----|------|
+| 执行轨 | `project.yaml`、`baselines/`、计划 | `wbs_progress` / `actuals` / 交付物 / `raid.issues[]`（纠偏） | 控制报告、状态报告 |
+| 监控轨 | `baselines/`、`actuals`、`raid` | `control_report` / `status_report` / `raid.risks[]` 滚动 | 交付物本身 |
+
+**闭环**：监控轨发现偏差/RED → 回报主控 → 主控把纠偏动作路由回执行轨（追加工作包或变更）→ 执行轨更新 `actuals` → 监控轨下一周期复核。
+G2→3 软门（PM 标记监控节奏）是进入双轨的显式动作；G3→4 收尾门在双轨都满足出口准则后翻 `closed`。
+
+> 沟通是 operational 期间的高频活动：状态报告/里程碑/风险升级等正式通知，由 `communication-agent`
+> 基于 `communication.contacts[]` 起草并经 `comm_send.py` 审批门外发（见 `references/agents.md §8`、`scripts/comm_send.py`）。
 
 ## 4. fork 模式：上下文接力
 

@@ -67,5 +67,7 @@ python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.ya
 
 ## 8. 衔接
 
-- 与 P2 执行并发于 `operational`；纠偏动作回流到执行。
+- 本阶段是 **operational 双轨**的「监控轨」：与 **P2 执行轨**（领域专家 Agent 持续交付）并发于 `operational`。
+  监控轨由专职 `monitoring-agent` 按 `control.cadence` 周期跑 `control_engine.py`，产出 `status_report`/`control_report`，
+  滚动 RAID/里程碑，对 RED 升级项**回流主控**→ 主控路由纠偏回执行轨。双轨编排见 `references/orchestration.md §3.4`。
 - 满足出口准则后翻 `closed` 进入 **P4 收尾**；状态机不可跳步。

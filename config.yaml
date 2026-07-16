@@ -1,0 +1,31 @@
+# PM Master · 安装期配置（策略 / 护栏层）
+# ------------------------------------------------------------------
+# 本文件在安装技能时由组织/管理员填写，定义「能力开关 + 安全护栏 + 邮件后端」。
+# 项目级数据（相关方联络人簿、发送节奏、项目内审批覆写）在 project.yaml 的
+# communication: 块，详见 references/project-schema.md。
+#
+# 设计原则：分层（policy / data 分离）。
+#   - 安装期 = 能力与安全护栏（尤其是「外发必须审批」这类不可逆动作的硬护栏）。
+#   - 项目期 = 数据（谁要收邮件、什么频率）。
+# requires_send_approval 等安全护栏为「硬护栏」，项目级配置只能收紧、不能放宽或关闭。
+
+email:
+  enabled: true                 # 是否启用对外邮件能力；false 时 comm_send.py 直接拒绝发送
+  backend: agent-mail           # 邮件后端：agent-mail | himalaya | gog | smtp
+                                #   agent-mail  : 本环境内置邮件技能（agent-mail）
+                                #   himalaya    : IMAP/SMTP 客户端（himalaya CLI）
+                                #   gog         : Google Workspace（gog CLI）
+                                #   smtp        : 通用 SMTP（用下方 smtp: 配置）
+  default_from: ""              # 默认发件人；留空则回退 project.yaml communication.from
+  requires_send_approval: true  # 硬护栏：任何外发邮件必须经 --approve <审批人>，否则 exit 1；项目不可关闭
+
+  # 仅当 backend=smtp 时使用
+  smtp:
+    host: ""
+    port: 587
+    user: ""
+    # 密码/令牌走环境变量（如 SMTP_PASSWORD），勿明文写入本文件
+    use_tls: true
+
+  # 仅当 backend=agent-mail / himalaya / gog 时，凭证由对应技能/CLI 的登录态提供
+  # （安装期请确保对应邮件技能已连接账号）。

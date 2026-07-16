@@ -118,8 +118,10 @@
 | **P3** 监控 | 监控（组合交付内并发） | G2→3 | 软门 | operational | operational（置 phase=监控） | PM | `references/phases/p3-monitoring.md` |
 | **P4** 收尾 | 收尾（组合收尾） | **G3→4** | **硬门** | operational | → `closed` | sponsor | `references/phases/p4-closeout.md` |
 
-> **执行与监控并发**：P2 与 P3 同处 `operational`，并非先执行后监控；G1→2 进入 operational 即同时启动执行与监控，
-> G2→3 只是 PM 标记监控节奏（软门，不改状态机）。详见 `p2-execution.md` / `p3-monitoring.md`。
+> **执行与监控并发（operational 双轨）**：P2 与 P3 同处 `operational`，并非先执行后监控；G1→2 进入 operational 即同时启动执行与监控，
+> G2→3 只是 PM 标记监控节奏（软门，不改状态机）。两轨以**多 Agent 并行**落地——执行轨（领域专家 Agent）持续交付，监控轨（`monitoring-agent`）
+> 周期跑 `control_engine.py` 并回流升级项，共享 `project.yaml`+`baselines/` 且字段零冲突。详见 `p2-execution.md` / `p3-monitoring.md` 与
+> `references/orchestration.md §3.4`。
 
 ### 6.2 硬门的自动化准则（gate_engine.py 强制）
 
