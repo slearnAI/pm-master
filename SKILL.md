@@ -5,7 +5,7 @@ license: MIT
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep
 metadata:
   display_name: "PM Master · 项目与项目群管理"
-  version: "1.2.1"
+  version: "1.2.2"
   category: productivity
 ---
 
@@ -127,6 +127,9 @@ python3 $SKILL_DIR/scripts/control_engine.py --project /workspace/<slug>/project
 python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --status          # 查看当前状态与可走的门
 python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --to 执行          # 评估能否进入执行（dry-run）
 python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --to 收尾 --approve "张三(sponsor)"  # 审批翻转状态+记录门+产出报告
+
+# 阶段门引擎单测套件（CI 门禁，覆盖 4 方法论 × 软/硬门，66 断言）
+python3 $SKILL_DIR/scripts/test_gate_engine.py
 
 # 专家调度计划：审计 WBS，标出缺 role 标签 / 超阈值的包，并特化推荐专家（多 Agent 第二层）
 python3 $SKILL_DIR/scripts/dispatch.py --project /workspace/<slug>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]

@@ -3,7 +3,7 @@
 > 面向科技行业 PM 的**项目 + 项目群**管理技能。Builder 理念、可执行、内置模板库、支持多 Agent 调度，
 > 适配 **waterfall / agile / iteration / hybrid** 四种实施方法论。
 
-- **版本**：1.2.1
+- **版本**：1.2.2
 - **许可**：MIT
 - **定位**：任何项目/项目群请求都必须落到真实产物（文件），禁止只给建议。
 
@@ -169,6 +169,7 @@ planning → review → baselined → operational → closed
 | `rollup_program_wbs.py` | 项目群 WBS 两层化（里程碑级 / 组件级） | `python3 rollup_program_wbs.py <项目群>/project.yaml [--derive-actuals]` |
 | `project_state.py` | 单一事实源读写 | `python3 project_state.py get project.phase --file project.yaml` |
 | `gate_engine.py` | 阶段门引擎（评估/审批进入目标阶段，硬门复用 consistency/control） | `python3 gate_engine.py --project <项目>/project.yaml --to 执行 [--approve "张三(sponsor)"]`；`--status` 看当前状态与可走的门 |
+| `test_gate_engine.py` | 阶段门引擎单测套件（CI 门禁，66 断言覆盖 4 方法论 × 软/硬门 / 被拒 / dry-run / --status） | `python3 test_gate_engine.py`（无参；退出码 0=全过，1=有失败，可挂 CI） |
 
 > ⚠️ **脚本异常处理**：若脚本缺失/路径错误/参数非法，不要静默失败——给出具体报错，并降级为：
 > ① 用 `project_state.py` 维护 `project.yaml`；② 用 `render.py` 直接渲染模板；③ 缺 PyYAML 时先 `pip install pyyaml`。
@@ -235,7 +236,7 @@ planning → review → baselined → operational → closed
 
 ## 12. 版本与变更
 
-变更历史见 [`CHANGELOG.md`](CHANGELOG.md)。当前版本 **1.2.1**（v1.2.0 引入阶段模块 P0–P4 与阶段门引擎 `gate_engine.py`；v1.2.1 同步本 README）。
+变更历史见 [`CHANGELOG.md`](CHANGELOG.md)。当前版本 **1.2.2**（v1.2.0 引入阶段模块 P0–P4 与阶段门引擎 `gate_engine.py`；v1.2.1 同步本 README；v1.2.2 新增 `gate_engine.py` 单测套件 `test_gate_engine.py` 并同步本 README）。
 
 ---
 

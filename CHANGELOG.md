@@ -2,6 +2,15 @@
 
 > 版本号与 `SKILL.md` 的 `metadata.version`、`_user_meta.json` 的 `version` 保持一致。
 
+## 1.2.2 (2026-07-16)
+
+### 阶段门引擎单测套件（CI 门禁）
+- **新增 `scripts/test_gate_engine.py`（standalone，无需 pytest）**：为 `gate_engine.py` 提供 66 条断言的回归保护，两层覆盖——
+  - **纯函数/逻辑层**：`GATES` 表不变量、软门无硬准则、硬门仅含控制门/收尾门、`phase_label_for_state` 路由（含「执行→监控 必须写入监控」历史 bug 的回归锁定）、`chk_*` 助手、`entry_criteria` 按方法论分支（敏捷进执行免基线、瀑布进执行含基线准则、收尾缺交付物判不过）。
+  - **CLI 集成层**：真实子进程运行 `gate_engine.py` 及其依赖的 `consistency_check.py` / `control_engine.py`，覆盖 waterfall/agile/iteration-hybrid 与项目群四方法论，验证软门（规划/监控）翻转、硬门（执行/收尾/组合收尾）通过、缺基线/缺验收/收益未实现/前置状态不符/未知目标 的阻断、dry-run 不落盘、`--status` 输出。
+- 退出码契约：`0`=全过，`1`=有失败，可直接挂 CI 质量门。
+- **README.md 同步至 v1.2.2**：§7 脚本速查补 `test_gate_engine.py` 行；版本号与 §12 变更说明更新（延续 v1.2.1 确立的「每次技能变更同步 README」规则）。
+
 ## 1.2.1 (2026-07-16)
 
 ### 文档同步
