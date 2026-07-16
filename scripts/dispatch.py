@@ -47,12 +47,12 @@ PM_GENERALIST = {'planner', 'scheduler', 'risk', 'stakeholder', 'reporter', 'pro
 DOMAIN_SPECIALIZATION = {
     'insurance-data-lake': {
         'data-architect': '保险主题域数据架构师',
-        'etl-engineer': 'Teradata TPT/ETL 工程师',
+        'etl-engineer': 'MPP 数仓 TPT/ETL 工程师',
         'data-security-engineer': '个保法/PII 合规工程师',
         'data-scientist': '保险精算/分析建模工程师',
         'governance-lead': '保险数据治理与审计负责人',
         'dr-bcp-engineer': '保险 BC/DR 工程师',
-        'infra-engineer': 'Teradata/IFX 平台工程师',
+        'infra-engineer': 'MPP 数仓/平台工程师',
     },
     'payments': {
         'data-architect': '支付领域架构师',

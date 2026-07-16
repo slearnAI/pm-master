@@ -3,7 +3,7 @@
 > 面向科技行业 PM 的**项目 + 项目群**管理技能。Builder 理念、可执行、内置模板库、支持多 Agent 调度，
 > 适配 **waterfall / agile / iteration / hybrid** 四种实施方法论。
 
-- **版本**：1.3.0
+- **版本**：1.3.1
 - **许可**：MIT
 - **定位**：任何项目/项目群请求都必须落到真实产物（文件），禁止只给建议。
 
@@ -244,7 +244,7 @@ planning → review → baselined → operational → closed
 
 ## 12. 版本与变更
 
-变更历史见 [`CHANGELOG.md`](CHANGELOG.md)。当前版本 **1.3.0**（v1.2.0 引入阶段模块 P0–P4 与阶段门引擎 `gate_engine.py`；v1.2.1 同步本 README；v1.2.2 新增 `gate_engine.py` 单测套件；v1.3.0 新增 **operational 双轨并行（P2 执行 + P3 监控多 Agent）** 与 **对外邮件审批门**（`comm_send.py` + `config.yaml` 安装期护栏 + `communication.contacts[]` 联络簿 + `communication-agent`）并同步本 README）。
+变更历史见 [`CHANGELOG.md`](CHANGELOG.md)。当前版本 **1.3.1**（v1.2.0 引入阶段模块 P0–P4 与阶段门引擎 `gate_engine.py`；v1.2.1 同步本 README；v1.2.2 新增 `gate_engine.py` 单测套件；v1.3.0 新增 **operational 双轨并行** 与 **对外邮件审批门**；v1.3.1 **脱敏**：移除真实客户名 / 厂商名等敏感信息，统一改为代号（客户A / MPP 数仓 / 代号 ALPHA），消除法律风险）。
 
 ---
 

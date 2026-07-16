@@ -2,6 +2,17 @@
 
 > 版本号与 `SKILL.md` 的 `metadata.version`、`_user_meta.json` 的 `version` 保持一致。
 
+## 1.3.1 (2026-07-16)
+
+### 脱敏（合规 · 消除法律风险）
+- 全量扫描技能文件，移除真实客户名与厂商名等敏感信息，统一改为代号：
+  - 真实保险行业客户名 → `客户A`（代号 `ALPHA`）；真实 MPP 数仓厂商名 → `MPP 数仓`（通用占位）；另一被点名的集成商经扫描确认本仓库**不存在**，无需处理。
+  - `references/activity-expert-map.md`：`insurance-data-lake` 的示例项目由真实客户项目名改为 `客户A 数据湖（代号 ALPHA，MPP 数仓）`，角色中的厂商专属 ETL 工程师改为 `MPP 数仓 TPT/ETL 工程师`。
+  - `scripts/dispatch.py`：专家角色标题中的厂商名改为 `MPP 数仓 TPT/ETL 工程师` / `MPP 数仓/平台工程师`。
+  - `references/expert-roles.md`：技术栈示例改为 `MPP 数仓、云数仓`；领域特化改为 `MPP 数仓 → 批量加载（厂商 TPT/MLOAD 类工具）`。
+- 经二次全仓扫描，真实客户名 / 厂商名已实现 **0 残留**；`examples/sample_project.yaml` 与 `rollup_program_wbs.py` 内置示例均为通用占位（无客户名），予以保留。
+- README / SKILL / `_user_meta.json` 版本同步至 1.3.1（延续「每次技能变更同步 README」规则）。
+
 ## 1.3.0 (2026-07-16)
 
 ### operational 双轨并行（P2 执行 + P3 监控 多 Agent）

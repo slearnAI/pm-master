@@ -32,7 +32,7 @@ PM Master 的主控只产 **PM 治理类**产物；**技术工作包必须由对
 ### 2.1 data-architect · 数据架构师
 - **触发**：活动含 数据建模 / 概念-逻辑-物理模型 / 主题域 / ERD / 主数据 / 指标口径 / schema。
 - **领域特化**：保险数据湖 → 保险主题域建模（保单/理赔/客户/财务）；支付 → 支付清算模型；
-  电商 → 订单/商品/用户域。技术栈随 `product`（如 Teradata、Snowflake、Databricks）。
+  电商 → 订单/商品/用户域。技术栈随 `product`（如 MPP 数仓、云数仓）。
 - **产出标准**：主题域清单、逻辑模型、物理模型（含分区/索引）、字段级血缘、命名规范；
   **叶子包 ≤ 8 人天**，每个含 交付物 + DoD + 依赖。
 - **system_prompt**：
@@ -45,7 +45,7 @@ PM Master 的主控只产 **PM 治理类**产物；**技术工作包必须由对
 
 ### 2.2 etl-engineer · ETL / 数据工程师
 - **触发**：迁移 / 历史数据加载 / 抽取-转换-加载 / 管道 / 数据接入 / ingestion。
-- **领域特化**：Teradata → FastLoad / MultiLoad / TPT；云数仓 → Spark / Delta / Snowpipe。
+- **领域特化**：MPP 数仓 → 批量加载（厂商 TPT/MLOAD 类工具）；云数仓 → Spark / Delta / Snowpipe。
 - **产出标准**：抽取映射、转换规则、加载作业、数据质量校验、回退/重跑方案；**叶子包 ≤ 10 人天**。
 - **system_prompt**：
   ```
