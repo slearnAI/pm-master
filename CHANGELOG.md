@@ -2,6 +2,12 @@
 
 > 版本号与 `SKILL.md` 的 `metadata.version`、`_user_meta.json` 的 `version` 保持一致。
 
+## 1.2.1 (2026-07-16)
+
+### 文档同步
+- **README.md 同步至 v1.2.x**：补充「阶段化交付 / 阶段门审批」核心能力、§4.5 阶段模块与阶段门、`gate_engine.py` 脚本速查、阶段流转强制门规则、4 个阶段模块参考索引；版本号升至 1.2.1。
+- 确立规则：**每次技能变更都同步更新 README.md**（与 SKILL.md / CHANGELOG / 版本号保持一致）。
+
 ## 1.2.0 (2026-07-16)
 
 ### 阶段模块与阶段门（Phase Modules & Gates）

@@ -3,7 +3,7 @@
 > 面向科技行业 PM 的**项目 + 项目群**管理技能。Builder 理念、可执行、内置模板库、支持多 Agent 调度，
 > 适配 **waterfall / agile / iteration / hybrid** 四种实施方法论。
 
-- **版本**：1.1.0
+- **版本**：1.2.1
 - **许可**：MIT
 - **定位**：任何项目/项目群请求都必须落到真实产物（文件），禁止只给建议。
 
@@ -34,6 +34,8 @@
 | 指标分析 | 挣值 EVM、排期关键路径、一致性校验 | 分析场景 |
 | 多 Agent 并行 | 组队产出互相独立的产物 | 复杂启动 / 评审 |
 | 双轨文档 | Markdown 源 → DOCX 正式件 | 交付 / 汇报 |
+| 阶段化交付 | P0+P1 启动规划 / P2 执行 / P3 监控 / P4 收尾 阶段模块，每阶段定义活动/交付物/准则 | 全周期 |
+| 阶段门审批 | gate_engine 评估入口准则 + 硬门（执行/收尾）强制审批，翻转状态机 | 阶段流转 |
 
 ---
 
@@ -107,12 +109,24 @@ planning → review → baselined → operational → closed
 - 经控制门把 `lifecycle_state` 置为 `operational` 后，才能用 `control_engine.py` 周期巡检；
 - 未基线化（缺 `baseline` 指针）的项目**不得**进入运营阶段，一致性门禁会直接阻断。
 
+### 4.5 阶段模块与阶段门（Phase Modules & Gates）
+启动→规划→执行→监控→收尾 拆成 4 个阶段模块（`references/phases/`），每模块定义该阶段的
+**活动 / 必产出交付物 / 入口准则 / 出口准则 / 阶段门审批清单**，并适配各方法论。阶段间流转由
+`gate_engine.py` 管控（硬门复用 `consistency_check` / `control_engine`，未过则 exit 1 拒绝推进）：
+
+- G0→1 启动→规划（软门 / PM）
+- **G1→2 规划→执行（硬门 / sponsor）**：须 `consistency_check.py` exit 0（waterfall/hybrid 另须 `baseline.py --freeze`）
+- G2→3 执行→监控（软门 / PM，operational 内并发）
+- **G3→4 监控→收尾（硬门 / sponsor）**：须 `control_engine.py` exit 0 + 验收/复盘交付物 +（项目群）收益闭环
+
+详见 `lifecycle.md` §6 与 `references/phases/*`。
+
 ---
 
 ## 5. 标准工作流（每次都遵循）
 
 - **Step 0 · 定位事实源**：找 `project.yaml`；若不存在 → `init_project.py` 建骨架。
-- **Step 1 · 分类路由**：判定 type / methodology / phase / intent 四维度。
+- **Step 1 · 分类路由**：判定 type / methodology / phase / intent 四维度；判定 `phase` 后读取对应阶段模块（`references/phases/*`），按该模块的活动/交付物/准则推进，阶段间流转须过 `gate_engine.py` 阶段门。
 - **Step 2 · 读方法论手册**：按 methodology 读 `references/methodology-*.md`（项目群读 `program-management.md`）。
 - **Step 2.5 · 专家调度（WBS 拆到叶子包）**：`planner-agent` 出 SOW 级摘要包；`dispatch.py` 审计并生成调度计划；领域专家子 Agent 把包拆到叶子级（≤ `control.granularity_threshold` 人天，默认 10）。
 - **Step 3 · 选执行模式**：direct / team / fork（见 §4.3）。
@@ -154,6 +168,7 @@ planning → review → baselined → operational → closed
 | `dispatch.py` | 专家调度计划（审计 WBS 缺 role / 超阈值） | `python3 dispatch.py --project <项目>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]` |
 | `rollup_program_wbs.py` | 项目群 WBS 两层化（里程碑级 / 组件级） | `python3 rollup_program_wbs.py <项目群>/project.yaml [--derive-actuals]` |
 | `project_state.py` | 单一事实源读写 | `python3 project_state.py get project.phase --file project.yaml` |
+| `gate_engine.py` | 阶段门引擎（评估/审批进入目标阶段，硬门复用 consistency/control） | `python3 gate_engine.py --project <项目>/project.yaml --to 执行 [--approve "张三(sponsor)"]`；`--status` 看当前状态与可走的门 |
 
 > ⚠️ **脚本异常处理**：若脚本缺失/路径错误/参数非法，不要静默失败——给出具体报错，并降级为：
 > ① 用 `project_state.py` 维护 `project.yaml`；② 用 `render.py` 直接渲染模板；③ 缺 PyYAML 时先 `pip install pyyaml`。
@@ -171,6 +186,7 @@ planning → review → baselined → operational → closed
 - **交付前过质量门**：`consistency_check.py` exit 0 才放过；致命项（估算缺失 / 排期未联网 / 缺 EVM 基线 / 混合缺微计划 / 风险未校准 5×5 / 收益缺 owner / 未基线化）直接阻断。
 - **规划 ≠ 运营化（强制串行）**：先规划→评审→`baseline.py --freeze`→控制门→才能进入执行/监控。
 - **运营控制循环**：进入 `operational` 后按 `control.cadence` 周期跑 `control_engine.py`，对照基线巡检；RED 升级退出码 1，可挂定时任务告警。
+- **阶段流转须过阶段门（强制）**：启动→规划→执行→监控→收尾 按状态机串行推进；进入 `执行`（G1→2）与 `收尾`（G3→4）为**硬门**，须经 `gate_engine.py` 评估且自动化准则全过、由 sponsor 审批后才翻转 `lifecycle_state`；`监控`（G2→3）为**软门**（PM 审批）。硬门不可跳过（见 `references/phases/*`、`lifecycle.md` §6）。
 
 ---
 
@@ -210,12 +226,16 @@ planning → review → baselined → operational → closed
 | `references/project-schema.md` | `project.yaml` 完整字段结构与协同约定 |
 | `references/templates-index.md` | 模板库全量清单与数据键契约 |
 | `references/usage.md` | 完整使用手册（端到端示例、提示词库） |
+| `references/phases/p0-p1-initiation-planning.md` | P0+P1 启动与规划阶段模块 |
+| `references/phases/p2-execution.md` | P2 执行阶段模块 |
+| `references/phases/p3-monitoring.md` | P3 监控阶段模块 |
+| `references/phases/p4-closeout.md` | P4 收尾阶段模块 |
 
 ---
 
 ## 12. 版本与变更
 
-变更历史见 [`CHANGELOG.md`](CHANGELOG.md)。当前版本 **1.1.0**。
+变更历史见 [`CHANGELOG.md`](CHANGELOG.md)。当前版本 **1.2.1**（v1.2.0 引入阶段模块 P0–P4 与阶段门引擎 `gate_engine.py`；v1.2.1 同步本 README）。
 
 ---
 
