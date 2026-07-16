@@ -2,6 +2,13 @@
 
 > 版本号与 `SKILL.md` 的 `metadata.version`、`_user_meta.json` 的 `version` 保持一致。
 
+## 1.3.3 (2026-07-16)
+
+### 英文文档与双语文档同步规则
+- 新增英文版 `README.en.md`（与 OpenClaw 纯英文技能包同源生成），作为本技能英文说明文档。
+- 确立「中文与英文双语文档同步」规则：每次技能变更须同步更新 `README.md`（中文）与 `README.en.md`（英文），并与 `SKILL.md` / `CHANGELOG.md` / 版本号保持一致（延续 v1.2.1 确立的「每次技能变更同步 README」规则）。
+- 同步发布 OpenClaw 兼容的纯英文技能包（`pm-master-openclaw-v1.3.2.zip`）：整包译为英文（SKILL.md / README / references / templates / scripts 注释与文案 / config / 示例），内部中文阶段与状态常量（启动 / 规划 / 执行 / 监控 / 收尾 / 组合定义 / 组合交付 / 组合收尾）统一改为英文规范词，测试套件 `test_gate_engine.py` 同步改为英文断言并 66/66 通过。
+
 ## 1.3.2 (2026-07-16)
 
 ### 进一步脱敏（合规 · 消除法律风险）
