@@ -21,6 +21,9 @@
 - `SKILL.md` §3 说明 TeamCreate 多 Agent 派发机制；§5 增加脚本异常处理与降级说明；§7 登记 `project-schema.md`。
 - `lifecycle.md` §5.3 补「项目群阶段 ↔ 状态机映射」「operational 与 monitor 关系」「退出 operational 的 5 条出口条件」。
 
+### 发布
+- **已发布至 `slearnAI/pm-master`（private）**：v1.1.0 推送至 `https://github.com/slearnAI/pm-master`（私有仓库，默认分支 `main`）。提交历史保留 `v1.0 → v1.1.0` 线性演进；本次同时清理了仓库内误提交的 `__pycache__`，并在 `.gitignore` 补充 Python 缓存忽略。Git tag：`v1.1.0`。
+
 ## 1.0.0
 
 - 初始版本：Builder-First 项目 / 项目群管理技能。
