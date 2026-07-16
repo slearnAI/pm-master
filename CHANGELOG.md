@@ -2,6 +2,17 @@
 
 > 版本号与 `SKILL.md` 的 `metadata.version`、`_user_meta.json` 的 `version` 保持一致。
 
+## 1.3.2 (2026-07-16)
+
+### 进一步脱敏（合规 · 消除法律风险）
+- `scripts/rollup_program_wbs.py` 的内置示例映射进一步去标识化：
+  - `COMPONENT_MAP`：剥离 SOW 组件 slug 的描述性后缀（`sow1-data-modelling` → `sow1`，…，`sow9-ts` → `sow9`，`external-pii` → `ext-pii`），仅保留编号标识。
+  - `PHASE_NAME`：阶段别名由客户专属描述（Wave 1–4 基础建模 / 金融与协议 / FSAS 分析结构 / NOS 归档与集成）改为中性 `Stream 1–4` 命名，移除 FSAS / NOS / 金融与协议等客户系统/领域泄露。
+  - 三处「某保险数据湖项目 / 保险数据湖」注释与告警文案统一改为「示例项目」，不再暴露真实行业与客户。
+- `CHANGELOG.md`：将 1.1.0 中关于内置示例的语义描述「某保险数据湖」改为中性的「示例项目」。
+
+> 说明：保留的 `Wave` / `保险数据湖` 命中（如 `references/methodology-hybrid.md`、`hybrid_playbook.md`、`expert-roles.md`）属**通用方法论/领域示例词汇**，非真实客户或厂商名，引擎路由与设计依赖之，故维持不变。
+
 ## 1.3.1 (2026-07-16)
 
 ### 脱敏（合规 · 消除法律风险）
@@ -58,7 +69,7 @@
 
 ### 可选增强（§5）
 - **控制门技术强制**：`control_engine.py` 新增「控制门 Gate」控制项，校验 `lifecycle_state == operational`；未进入运营控制阶段时标记为 AMBER 并记入升级项 `gate_not_operational`，贴合 `lifecycle.md` §5 的 `planning→baselined→operational` 强制串行纪律（不破坏「仅 RED 才 exit 1」的既有契约）。
-- **项目群 rollup 解耦**：`rollup_program_wbs.py` 的组件 / 阶段映射改为可从 `project.yaml` 的 `program.components`（SOW id → 组件 slug）与 `governance.waves`（阶段 key → 阶段名）读取；缺省才回退内置示例（某保险数据湖）并给出警告，不再硬编码单一项目。
+- **项目群 rollup 解耦**：`rollup_program_wbs.py` 的组件 / 阶段映射改为可从 `project.yaml` 的 `program.components`（SOW id → 组件 slug）与 `governance.waves`（阶段 key → 阶段名）读取；缺省才回退内置示例（示例项目）并给出警告，不再硬编码单一项目。
 - **版本可追溯**：新增 `CHANGELOG.md`；`_user_meta.json` 增加 `version` 字段；技能版本升至 `1.1.0`。
 
 ### 同期修复与加固（来自评审第一轮）

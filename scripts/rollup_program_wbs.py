@@ -22,7 +22,7 @@ PM Master · 项目群 WBS 两层化（tagged single-source model）
 只重写 project.yaml 的 `wbs:`（及可选的 `actuals.wbs_progress:`）块，其余段落与
 注释完整保留；执行前自动备份为 <project.yaml>.bak-<date>。
 
-> 组件 / 阶段映射（`COMPONENT_MAP` / `PHASE_NAME`）为**示例默认值**（取自某保险数据湖项目）。
+> 组件 / 阶段映射（`COMPONENT_MAP` / `PHASE_NAME`）为**示例默认值**（取自示例项目）。
 > 生产环境请在 `project.yaml` 提供 `program.components`（SOW id → 组件 slug）与
 > `governance.waves`（阶段 key → 阶段名），引擎优先使用项目级配置，缺省才回退示例并告警。
 
@@ -37,27 +37,27 @@ import datetime
 import collections
 import yaml
 
-# 示例默认值（取自某保险数据湖项目）。生产环境请改用 project.yaml 的
+# 示例默认值（取自示例项目）。生产环境请改用 project.yaml 的
 # program.components / governance.waves，见下方 COMPONENT_MAP_EFF / PHASE_NAME_EFF。
 COMPONENT_MAP = {
     'P0': 'pmo-program-management',
-    'SOW1': 'sow1-data-modelling',
-    'SOW2': 'sow2-data-migration',
-    'SOW3': 'sow3-data-masking',
-    'SOW4': 'sow4-data-analytics',
-    'SOW5': 'sow5-bcm',
-    'SOW6': 'sow6-sme',
-    'SOW7': 'sow7-project-management',
-    'SOW8': 'sow8-training',
-    'SOW9': 'sow9-ts',
-    'EXT-PII': 'external-pii',
+    'SOW1': 'sow1',
+    'SOW2': 'sow2',
+    'SOW3': 'sow3',
+    'SOW4': 'sow4',
+    'SOW5': 'sow5',
+    'SOW6': 'sow6',
+    'SOW7': 'sow7',
+    'SOW8': 'sow8',
+    'SOW9': 'sow9',
+    'EXT-PII': 'ext-pii',
 }
 PHASE_NAME = {
     'M0': 'M0 动员与就绪',
-    'W1': 'Wave 1 基础建模',
-    'W2': 'Wave 2 金融与协议',
-    'W3': 'Wave 3 FSAS 分析结构',
-    'W4': 'Wave 4 NOS 归档与集成',
+    'W1': 'Stream 1 基础建模',
+    'W2': 'Stream 2 协议处理',
+    'W3': 'Stream 3 分析结构',
+    'W4': 'Stream 4 归档与集成',
 }
 # 运行时生效映射：由 main() 按 project.yaml 覆盖；缺省回退示例。
 COMPONENT_MAP_EFF = dict(COMPONENT_MAP)
@@ -217,7 +217,7 @@ def main():
     if comp_override:
         COMPONENT_MAP_EFF.update(comp_override)
     else:
-        print("[rollup] 警告：未提供 program.components，使用内置示例 COMPONENT_MAP（保险数据湖）。"
+        print("[rollup] 警告：未提供 program.components，使用内置示例 COMPONENT_MAP（示例项目）。"
               "生产请在 project.yaml 配置 program.components（SOW id → 组件 slug）。", file=sys.stderr)
     if wave_override:
         PHASE_NAME_EFF.update(wave_override)

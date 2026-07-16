@@ -5,7 +5,7 @@ license: MIT
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep
 metadata:
   display_name: "PM Master · 项目与项目群管理"
-  version: "1.3.1"
+  version: "1.3.2"
   category: productivity
 ---
 
