@@ -35,7 +35,7 @@ project:
   pm: ''                                # 项目经理（质量门强制）
   team: []                              # 成员列表
 governance:
-  stage_gates: []                       # 阶段门清单
+  stage_gates: []                       # 阶段门清单（gate_engine.py 写入：{gate, from_phase, to_phase, on, by, decision, lifecycle_before, lifecycle_after, criteria[]}）
   cadence: ''                           # 评审/汇报节奏
 artifacts: {}                           # key -> 相对项目根的文件路径（产物索引）
 raid:

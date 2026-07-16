@@ -5,7 +5,7 @@ license: MIT
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep
 metadata:
   display_name: "PM Master · 项目与项目群管理"
-  version: "1.1.0"
+  version: "1.2.0"
   category: productivity
 ---
 
@@ -40,6 +40,10 @@ metadata:
   - `methodology`：waterfall / agile / iteration / hybrid
   - `phase`：启动 / 规划 / 执行 / 监控 / 收尾（项目群：组合定义 / 组合交付 / 组合收尾）
   - `intent`：规划 / 构建 / 汇报 / 分析 / 治理
+  - 判定 `phase` 后**读取对应阶段模块**（定义该阶段的活動/交付物/入口出口准则/阶段门）：
+    `启动/规划` → `references/phases/p0-p1-initiation-planning.md`；`执行` → `references/phases/p2-execution.md`；
+    `监控` → `references/phases/p3-monitoring.md`；`收尾` → `references/phases/p4-closeout.md`
+    （项目群：组合定义/交付/收尾分别对应同模块）。阶段间流转须过 `gate_engine.py` 阶段门（见 §6）。
 - **Step 2 · 读方法论手册**：按 methodology 读取 `references/methodology-*.md`（项目群读 `references/program-management.md`）。
 - **Step 2.5 · 专家调度（WBS 拆到叶子包）**：WBS 不是 PM 一个人拍出的 SOW 级清单，而应由**领域专家逐域拆解**。`planner-agent` 先出 SOW 级 summary 包并标 `domain`；运行
   `python3 scripts/dispatch.py --project <project.yaml>` 生成**调度计划**（标出缺 `role` 标签的领域活动、超阈值的粗包、并特化推荐专家）；对每个包派出对应领域专家子 Agent（用 `references/expert-roles.md` 的 `system_prompt`，代入 `project.domain`/`product`，或路由至 WorkBuddy 专家中心已装的对应专家），拆成叶子工作包（≤ `control.granularity_threshold` 人天，默认 10，ID 前缀如 `SOW1.1`）写回 `project.yaml.wbs`。详见 `references/activity-expert-map.md` 与 `references/orchestration.md §3.3`。
@@ -119,6 +123,11 @@ python3 $SKILL_DIR/scripts/baseline.py --status --project /workspace/<slug>/proj
 # 运营控制引擎：对照基线周期巡检（exit 1 = 有 RED 升级，可挂定时任务/自动化）
 python3 $SKILL_DIR/scripts/control_engine.py --project /workspace/<slug>/project.yaml [--as-of 2026-08-12] [--json]
 
+# 阶段门引擎：评估/审批进入目标阶段（硬门复用 consistency/control 引擎，见 references/phases/*）
+python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --status          # 查看当前状态与可走的门
+python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --to 执行          # 评估能否进入执行（dry-run）
+python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --to 收尾 --approve "张三(sponsor)"  # 审批翻转状态+记录门+产出报告
+
 # 专家调度计划：审计 WBS，标出缺 role 标签 / 超阈值的包，并特化推荐专家（多 Agent 第二层）
 python3 $SKILL_DIR/scripts/dispatch.py --project /workspace/<slug>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]
 
@@ -139,6 +148,7 @@ python3 $SKILL_DIR/scripts/project_state.py get project.phase --file /workspace/
 - **标准启动套件**：任何项目启动至少产出 charter + stakeholder + raci + communication_plan；项目群与 hybrid 另须 change_log（变更控制）。
 - **规划 ≠ 运营化（强制串行状态机）**：waterfall / hybrid 必须先 规划→评审→`baseline.py --freeze`（冻结计划为基线）→ 控制门 → 才能进入 执行/监控。未基线化（缺 `baseline` 指针）一致性门禁**直接阻断**。
 - **运营控制循环**：进入 `operational` 后按 `control.cadence` 周期跑 `control_engine.py`，对照基线巡检；状态 RED（任一升级项）退出码 1，可挂定时任务 / 自动化做周期巡检与告警。基线漂移需重基线者走 change_request。
+- **阶段流转须过阶段门（强制，不可跳步）**：`启动→规划→执行→监控→收尾` 按状态机串行推进；进入 `执行`（G1→2 控制门）与 `收尾`（G3→4 收尾门）为**硬门**，须经 `gate_engine.py` 评估且自动化准则全过、由 sponsor 审批后才翻转 `lifecycle_state`；`监控`（G2→3）为**软门**，由 PM 审批标记监控节奏。硬门不可跳过——各阶段的活动/交付物/入口出口准则/审批清单见 `references/phases/*`，状态机与门禁映射见 `references/lifecycle.md §5/§6`。
 - **模板可扩展**：新增方法论/产物 = 加模板 + 在 `references/templates-index.md` 登记，无需改引擎。
 
 ## 7. 参考文档索引（按需读取）
@@ -160,3 +170,7 @@ python3 $SKILL_DIR/scripts/project_state.py get project.phase --file /workspace/
 | `references/program-management.md` | 项目群（组合）管理 |
 | `references/metrics.md` | EVM / 燃尽 / 健康度指标口径 |
 | `references/templates-index.md` | 选模板、看模板库全量清单 |
+| `references/phases/p0-p1-initiation-planning.md` | **P0+P1 启动与规划**：活动/交付物/入口出口准则/G1→2 控制门 |
+| `references/phases/p2-execution.md` | **P2 执行**：活动/交付物/入口准则/G2→3 软门 |
+| `references/phases/p3-monitoring.md` | **P3 监控**：活动/交付物/出口准则/G3→4 收尾门 |
+| `references/phases/p4-closeout.md` | **P4 收尾**：验收/复盘/移交/收益核实/关闭出口 |

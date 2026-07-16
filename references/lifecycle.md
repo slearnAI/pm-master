@@ -101,3 +101,40 @@
 5. 由主控将 `project.lifecycle_state` 置为 `closed`（可经 `project_state.py set`）。
 
 > 仍未基线化（缺 `baseline` 指针）的 waterfall / hybrid 项目**不得**进入 operational；已 operational 但未满足上述出口条件**不得**置 closed——状态机不可跳步。
+
+---
+
+## 6. 阶段模块与阶段门（Phase Modules & Gates）
+
+方法论阶段（P0–P4）与状态机（`lifecycle_state`）是正交两层：阶段模块定义"该阶段做什么/交什么/怎么进门"，
+状态机是"强制串行的纪律"。二者通过**阶段门（Gate）**衔接——每个硬门在 `gate_engine.py` 中复用既有引擎做自动化校验。
+
+### 6.1 阶段模块 ↔ 门 ↔ 状态机 映射
+
+| 阶段模块 | 覆盖 phase | 阶段门 | 门类型 | 前置状态 | 审批后翻转 | 审批人 | 模块文档 |
+|----------|-----------|--------|--------|----------|------------|--------|----------|
+| **P0+P1** 启动与规划 | 启动/规划（组合定义） | G0→1 | 软门 | planning | planning（仅置 phase） | PM | `references/phases/p0-p1-initiation-planning.md` |
+| **P2** 执行 | 执行（组合交付） | **G1→2** | **硬门** | planning/review/baselined | → `operational` | sponsor | `references/phases/p2-execution.md` |
+| **P3** 监控 | 监控（组合交付内并发） | G2→3 | 软门 | operational | operational（置 phase=监控） | PM | `references/phases/p3-monitoring.md` |
+| **P4** 收尾 | 收尾（组合收尾） | **G3→4** | **硬门** | operational | → `closed` | sponsor | `references/phases/p4-closeout.md` |
+
+> **执行与监控并发**：P2 与 P3 同处 `operational`，并非先执行后监控；G1→2 进入 operational 即同时启动执行与监控，
+> G2→3 只是 PM 标记监控节奏（软门，不改状态机）。详见 `p2-execution.md` / `p3-monitoring.md`。
+
+### 6.2 硬门的自动化准则（gate_engine.py 强制）
+
+- **G1→2（进执行）**：`consistency_check.py` **exit 0**；waterfall/hybrid 另须已 `baseline.py --freeze`（`baseline.file` 存在）。
+- **G3→4（进收尾）**：`control_engine.py` **exit 0**（无 RED 升级）；`closure_report` 与 `lessons_learned` 已登记；项目群须全部收益已实现/闭环。
+
+### 6.3 阶段门引擎用法
+
+```bash
+SKILL_DIR=<本技能目录>
+python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --status            # 当前状态 + 可走的门
+python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --to 执行            # 评估（dry-run，不改动）
+python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --to 执行 --approve "张三(sponsor)"  # 审批翻转
+```
+
+审批通过后会：① 翻转 `project.phase` 与 `lifecycle_state`；② 向 `governance.stage_gates` 追加一条门记录
+（门名/前后 phase/前后状态/审批人/日期/准则快照）；③ 在 `docs/gate_reports/` 产出阶段门评审报告并登记到 `artifacts`。
+硬门未通过则 **exit 1 拒绝推进**，不可跳过。

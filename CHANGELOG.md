@@ -2,6 +2,17 @@
 
 > 版本号与 `SKILL.md` 的 `metadata.version`、`_user_meta.json` 的 `version` 保持一致。
 
+## 1.2.0 (2026-07-16)
+
+### 阶段模块与阶段门（Phase Modules & Gates）
+- **新增 4 个阶段模块**（`references/phases/`）：`p0-p1-initiation-planning.md`（启动+规划）、`p2-execution.md`（执行）、`p3-monitoring.md`（监控）、`p4-closeout.md`（收尾）。每个模块定义该阶段的**活动 / 必产出交付物 / 入口准则 / 出口准则 / 阶段门审批清单**，并方法论适配（waterfall/agile/iteration/hybrid/项目群）。
+- **新增 `scripts/gate_engine.py`（阶段门引擎）**：按 `phase`↔`lifecycle_state` 模型评估进入目标阶段的入口准则；审批通过后翻转 `project.phase` 与 `lifecycle_state`、向 `governance.stage_gates` 追加门记录、在 `docs/gate_reports/` 产出阶段门评审报告并登记到 `artifacts`。
+- **硬门复用既有引擎**（避免逻辑重复）：进 `执行` 须 `consistency_check.py` exit 0（waterfall/hybrid 另须 `baseline.py --freeze`）；进 `收尾` 须 `control_engine.py` exit 0 + 验收/复盘交付物 +（项目群）收益闭环。未通过则 **exit 1 拒绝推进，不可跳过**。
+- **门映射**：G0→1 启动→规划（软门/PM）、**G1→2 规划→执行（硬门/sponsor）**、G2→3 执行→监控（软门/PM，operational 内并发）、**G3→4 监控→收尾（硬门/sponsor）**。对齐 `lifecycle.md §5/§6`。
+- `SKILL.md`：Step 1 路由按 `phase` 加载对应阶段模块；§5 增加 `gate_engine.py` 用法；§6 增加"阶段流转须过阶段门（强制）"规则；§7 索引登记 4 个阶段模块。
+- `lifecycle.md`：新增 §6「阶段模块与阶段门」——阶段模块↔门↔状态机映射表、硬门自动化准则、`gate_engine.py` 用法。
+- `project-schema.md`：注明 `governance.stage_gates` 记录结构。
+
 ## 1.1.0 (2026-07-16)
 
 ### 可选增强（§5）
