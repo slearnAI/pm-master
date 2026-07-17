@@ -75,7 +75,7 @@ def make_project(slug, data, extra=None):
 
 _BASELINE_WF = {
     'wbs': [
-        {'id': 'W1', 'name': '需求', 'estimate': 5, 'start': '2026-01-01', 'end': '2026-01-10'},
+        {'id': 'W1', 'name': '需求', 'role': 'ba', 'estimate': 5, 'start': '2026-01-01', 'end': '2026-01-10'},
         {'id': 'W2', 'name': '开发', 'estimate': 10, 'start': '2026-01-11', 'end': '2026-02-10', 'dependsOn': 'W1'},
     ],
     'metrics': {'evm': {'pv': 100}},
@@ -86,7 +86,7 @@ _BASELINE_WF = {
 }
 
 _WBS_WF = [
-    {'id': 'W1', 'name': '需求', 'estimate': 5, 'start': '2026-01-01', 'end': '2026-01-10'},
+    {'id': 'W1', 'name': '需求', 'role': 'ba', 'estimate': 5, 'start': '2026-01-01', 'end': '2026-01-10'},
     {'id': 'W2', 'name': '开发', 'estimate': 10, 'start': '2026-01-11', 'end': '2026-02-10', 'dependsOn': 'W1'},
 ]
 

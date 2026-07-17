@@ -7,7 +7,7 @@
 ```mermaid
 flowchart LR
 {{#each dependencies}}
-    {{slug(this.from)}}["{{this.from}}"] -->|{{this.type}}| {{slug(this.to)}}["{{this.to}}"]
+    {{ mid(this.from) }}["{{ mlabel(this.from) }}"] -->|{{ mlabel(this.type) }}| {{ mid(this.to) }}["{{ mlabel(this.to) }}"]
 {{/each}}
 ```
 

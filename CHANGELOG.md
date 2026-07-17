@@ -2,6 +2,22 @@
 
 > 版本号与 `SKILL.md` 的 `metadata.version`、`_user_meta.json` 的 `version` 保持一致。
 
+## 1.3.4 (2026-07-16)
+
+### 修复：Mermaid 渲染稳定性 + SOW 级 WBS 强制专家拆解
+- **Mermaid 渲染加固（`scripts/render.py`）**：
+  - 新增 mermaid 安全辅助 `mid()` / `mlabel()` / `gname()`；原 `slug()` 改为复用 `mid()`（保留中文节点 ID，仅把空格/点号/非常规字符转为下划线，保证非空且不以数字开头）。
+  - 主要修复：`slug()` 直接删点号曾把 `SOW1.1` 变成 `SOW11`，造成**重复/非法节点 ID → mermaid 报错**；空值曾生成空节点 id（非法）。现统一为合法、层级保留（如 `SOW1_1`）。
+  - `mlabel()` 转义标签内双引号、折叠空白；`gname()` 额外把甘特任务名里的 `:` 转全角 `：`，避免破坏 `name :id` 分隔。
+  - `join()` 对 `None` 回退为 `0`，避免 xychart 数组出现 `[1, , 3]` 而崩溃。
+- **`render_docx.py` 优雅处理 mermaid**：python-docx 分支新增围栏代码块检测——`mermaid` 块优先用 `mmdc`（若已装）渲染成 PNG 嵌入，否则作为带标注的代码块输出，消除原先的乱码/报错。
+- **6 个 mermaid 模板改用安全辅助**：`waterfall/wbs.md`、`waterfall/schedule_gantt.md`（gname+mid）、`program/dependency_map.md`、`hybrid/macro_micro_map.md`、`hybrid/hybrid_governance.md`（mid+mlabel）；`agile/burndown.md` 受益于 `join` 加固。
+- **SOW 级 WBS 强制走专家拆解（`scripts/consistency_check.py` + `SKILL.md`）**：
+  - 凡「领域活动缺 `role` 标签」或「领域活动 `estimate` 超 `control.granularity_threshold`（默认 10 人天）」→ **默认致命（exit 1 阻断交付）**，强制走 `dispatch.py` → 领域专家子 Agent 拆解，主控不得直接拆分绕过。
+  - 非领域活动的超阈值仅保留为告警（通用颗粒度提示）；`program` 级 `summary` / `milestone` / `tier: program` 汇总行豁免（项目群颗粒度本就到里程碑级）。
+  - `SKILL.md` Step 2.5 增加「禁止主控自拆（强制）」硬规则，§6 措辞改为默认致命；`references/activity-expert-map.md §5` 同步。
+  - `test_gate_engine.py` 夹具 WBS 补 `role`（建模专家产出的叶子包），套件恢复 66/66 通过。
+
 ## 1.3.3 (2026-07-16)
 
 ### 英文文档与双语文档同步规则

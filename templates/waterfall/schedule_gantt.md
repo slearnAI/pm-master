@@ -17,9 +17,9 @@ gantt
     axisFormat %m-%d
 {{#each tasks}}
 {{#if this.milestone}}
-    {{this.name}} :milestone, {{this.id}}, {{this.start}}
+    {{ gname(this.name) }} :milestone, {{ mid(this.id) }}, {{this.start}}
 {{else}}
-    {{this.name}} :{{this.id}}, {{this.start}}, {{this.end}}
+    {{ gname(this.name) }} :{{ mid(this.id) }}, {{this.start}}, {{this.end}}
 {{/if}}
 {{/each}}
 ```

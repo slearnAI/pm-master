@@ -7,7 +7,7 @@
 ```mermaid
 flowchart LR
 {{#each map}}
-    {{slug(this.macro_milestone)}}["{{this.macro_milestone}}"] -->|{{this.alignment_status}}| {{slug(this.micro_iteration)}}["{{this.micro_iteration}}"]
+    {{ mid(this.macro_milestone) }}["{{ mlabel(this.macro_milestone) }}"] -->|{{ mlabel(this.alignment_status) }}| {{ mid(this.micro_iteration) }}["{{ mlabel(this.micro_iteration) }}"]
 {{/each}}
 ```
 

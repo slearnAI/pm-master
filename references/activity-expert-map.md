@@ -65,9 +65,11 @@
 5. 未通过则退回对应专家继续拆，直到叶子全 ≤ 阈值、领域活动均有 role 标签
 ```
 
-## 5. 一致性门禁联动（consistency_check.py 新增）
+## 5. 一致性门禁联动（consistency_check.py）
 
-- 领域活动缺 `role` 标签 → **告警**（默认）；`--strict` 下**致命**。
-- `estimate > granularity_threshold` 且未拆解 → **告警**（默认）；`--strict` 下**致命**。
+- **领域活动缺 `role` 标签 → 默认致命（exit 1 阻断交付）**；`--strict` 下其余告警也升级致命。
+- `estimate > granularity_threshold` 的**领域活动**未拆解 → **默认致命**；非领域活动的超阈值仅作告警（通用颗粒度提示）。
+- program 级 `summary` 汇总包（SOW/P0 父包）跳过，由组件层叶子包承担。
 
-这两条门禁直接把"粗粒度 WBS 未经专家拆解就当交付"挡在门外。
+这两条门禁直接把「粗粒度 SOW 级 WBS 未经专家拆解 / 主控自拆」挡在门外——必须走 `dispatch.py` → 领域专家子 Agent 拆解，
+否则交付前 `consistency_check.py` 直接判致命，无法放行（详见 SKILL.md Step 2.5 / §6）。

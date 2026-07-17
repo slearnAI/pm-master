@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TD
 {{#each governance.parts}}
-    {{slug(this.name)}}["{{this.name}}\n方法: {{this.methodology}}\n关口: {{this.gate}}\n决策: {{this.decision_owner}}"]
+    {{ mid(this.name) }}["{{ mlabel(this.name) }}\n方法: {{ mlabel(this.methodology) }}\n关口: {{ mlabel(this.gate) }}\n决策: {{ mlabel(this.decision_owner) }}"]
 {{/each}}
 ```
 

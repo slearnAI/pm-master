@@ -30,8 +30,8 @@ PM Master · 跨产物一致性校验（交付前质量门 · 控制级）
     - 执行/监控阶段建议具备 status_report
     - 执行/监控阶段建议配置 control 块 + control_register（运营控制引擎）
     - 建议具备 communication_plan
-    - 领域活动 WBS 缺 role 标签（应调度对应专家产出，见 references/expert-roles.md）
-    - WBS 估算超过叶子包颗粒度阈值（须由领域专家进一步拆解，防 SOW 级粗粒度）
+    - 非领域活动的 WBS 估算超过叶子包颗粒度阈值（通用颗粒度提示，建议拆解）
+    - 领域活动 WBS 缺 role 标签 / 超阈值：**默认致命**（见下方 7b，强制走专家拆解，不可由主控自拆绕过）
 
 用法：
   python3 consistency_check.py --project /workspace/<slug>/project.yaml
@@ -260,29 +260,43 @@ def main():
         if bad:
             warnings.append(f"WBS 依赖指向未知 ID（建议核对）：{', '.join(bad)}")
 
-    # ---- 7b. 专家角色标注 + 颗粒度（默认告警；--strict 致命） ----
+    # ---- 7b. 专家角色标注 + 颗粒度 ----
     # 领域活动必须由对应专家产出并拆到叶子包，否则 WBS 会停在 SOW 级粗粒度。
+    # 关键修复：凡「领域活动缺 role 标签」或「领域活动超阈值」，默认即致命（exit 1 阻断交付），
+    # 强制走 dispatch.py -> 领域专家子 Agent 拆解，主控不得直接拆分绕过（见 SKILL.md Step 2.5 / §6）。
+    # program 级 summary 汇总包（SOW/P0 父包）跳过，由组件层叶子包承担。
     ctrl_blk = data.get('control') or {}
     gran_thr = float(ctrl_blk.get('granularity_threshold') or 10)
     for w in wbs:
-        if w.get('summary'):  # 汇总行（SOW/P0 父包）不检查角色/颗粒度，交由叶子包承担
+        # program 级汇总/里程碑行（SOW/P0 父包、tier:program、milestone）不检查：
+        # 项目群颗粒度本就到里程碑级（见 references/program-management.md），由组件层叶子包承担；
+        # 主控不得在项目群层把里程碑行当领域包去拆。
+        if w.get('summary') or w.get('milestone') or (w.get('tier') == 'program'):
             continue
         wid = w.get('id', '?')
         name = w.get('name') or ''
         role = infer_role(w, name)
         dom = w.get('domain')
-        if is_domain_activity(role, name, dom) and not w.get('role'):
-            warnings.append(
-                f"WBS {wid}『{name}』为领域活动但缺少 role 标签"
-                f"（应调度 {role or '对应领域专家'} 产出，见 references/expert-roles.md）")
+        is_da = is_domain_activity(role, name, dom)
         try:
             est_v = float(w.get('estimate'))
         except (TypeError, ValueError):
             est_v = 0.0
-        if est_v > gran_thr:
+        over = est_v > gran_thr
+        if is_da and not w.get('role'):
+            problems.append(
+                f"WBS {wid}『{name}』为领域活动但缺少 role 标签（致命）："
+                f"须由对应领域专家（{role or '见 references/expert-roles.md'}）产出并写回 wbs，"
+                f"主控不得直接拆分。参考 references/activity-expert-map.md §3-§4。")
+        if is_da and over:
+            problems.append(
+                f"WBS {wid}『{name}』估算 {est_v:g} 人天超过叶子包阈值 {gran_thr:g}（致命）："
+                f"须调度领域专家进一步拆为 ≤{gran_thr:g} 人天的叶子包（ID 前缀 {wid}.x），"
+                f"防止 SOW 级粗粒度 WBS 当交付。")
+        if (not is_da) and over:
             warnings.append(
                 f"WBS {wid}『{name}』估算 {est_v:g} 人天超过叶子包阈值 {gran_thr:g}，"
-                f"须调度领域专家进一步拆解（防止 SOW 级粗粒度 WBS 当交付）")
+                f"建议进一步拆解（非领域活动，仅告警）。")
 
     # ---- 8. EVM 基线 ----
     # 计划价值(PV/BAC)属于计划基线，须在 metrics.evm；当前挣值/实际成本(ev/ac)

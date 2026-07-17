@@ -26,7 +26,7 @@ gantt
 {{#each wbs_groups}}
     section {{this.name}}
 {{#each this.items}}
-    {{this.gantt_name}} :{{slug(this.id)}}, {{this.start}}, {{this.end}}
+    {{ gname(this.gantt_name) }} :{{ mid(this.id) }}, {{this.start}}, {{this.end}}
 {{/each}}
 {{/each}}
 ```

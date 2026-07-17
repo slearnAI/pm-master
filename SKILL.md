@@ -5,7 +5,7 @@ license: MIT
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep
 metadata:
   display_name: "PM Master · 项目与项目群管理"
-  version: "1.3.3"
+  version: "1.3.4"
   category: productivity
 ---
 
@@ -149,7 +149,7 @@ python3 $SKILL_DIR/scripts/project_state.py get project.phase --file /workspace/
 - **先有事实源**：没有 `project.yaml` 就先 `init_project.py`；子 Agent 也通过 `project_state.py` 读写它。
 - **方法论要对味**：agile 用 backlog/sprint/burndown，waterfall 用 WBS/甘特/阶段门，别混用错配模板。
 - **估算强制**：WBS / backlog 每行必须有数值化估算(>0)，不允许 "—" 占位（控制级门禁）。
-- **专家调度 + 叶子包颗粒度**：技术领域工作包必须由对应**领域专家**（`references/expert-roles.md`）拆解产出，WBS 行须标 `role`（产出角色）与 `domain`；叶子包 `estimate` 不得超过 `control.granularity_threshold`（默认 10 人天），超过须由专家继续拆解（ID 前缀如 `SOW1.1`）。一致性门禁对缺 `role` / 超阈值的领域活动**告警**（`--strict` 下致命）。粗粒度 SOW 级 WBS 不得作为交付——那是没用专家的结果。
+- **专家调度 + 叶子包颗粒度（强制，不可跳过）**：技术领域工作包必须由对应**领域专家**（`references/expert-roles.md`）拆解产出，WBS 行须标 `role`（产出角色）与 `domain`；叶子包 `estimate` 不得超过 `control.granularity_threshold`（默认 10 人天），超过须由专家继续拆解（ID 前缀如 `SOW1.1`）。主控**不得**自行把 SOW 级领域包拆成叶子包（见 Step 2.5「禁止主控自拆」）。一致性门禁对缺 `role` / 超阈值的**领域活动默认致命（exit 1 阻断交付）**，`--strict` 下其余告警也升级致命。粗粒度 SOW 级 WBS 不得作为交付——那是没用专家、或主控自拆的结果（均被门禁拦下）。
 - **分析强制**：waterfall / hybrid 交付前必须跑 `schedule_health.py --project`；执行/监控阶段必须跑 `evm.py`（metrics.evm 须先建基线）。
 - **交付前过质量门**：team 模式产物汇总后必须跑 `consistency_check.py --project`，**exit 0 才放过**；控制级问题（估算缺失 / 排期未联网 / 缺 EVM 基线 / 混合缺微计划 / 风险未校准 5×5 / 收益缺 owner）会直接阻断交付。
 - **标准启动套件**：任何项目启动至少产出 charter + stakeholder + raci + communication_plan；项目群与 hybrid 另须 change_log（变更控制）。

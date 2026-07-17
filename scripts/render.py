@@ -14,7 +14,11 @@ PM Master · 模板渲染引擎（契约脚本）
   5. 比较运算：  ==  /  !=  （用于 #if）
   6. 字面量：    "文本"  /  '文本'  /  true / false / null / 数字
   7. 列表索引：  {{ burndown.[0].remaining }}（支持 arr.[n] 形式）
-  8. 字段拼接：  {{ join(burndown, ", ", "day") }} -> 1, 2, 3（单行拼接，用于 mermaid 数组）
+  8. 字段拼接：  {{ join(burndown, ", ", "day") }} -> 1, 2, 3（单行拼接，用于 mermaid 数组；None 回退为 0 防崩溃）
+9. mermaid 安全辅助：
+   - {{ mid(text) }}      -> mermaid 节点/task 安全 ID（空格/点/非常规字符 -> 下划线，保证非空、不以数字开头）
+   - {{ mlabel(text) }}   -> mermaid 标签文本（转义双引号、折叠空白，用于 ["..."] 内）
+   - {{ gname(text) }}    -> 甘特图任务显示名（标签安全 + 冒号转全角，避免破坏 `name :id` 分隔）
 
 数据合并：循环体内通过 `this` 引用当前元素；支持一层嵌套循环（this 会按层覆盖）。
 缺失变量输出空串，不抛错（便于部分数据渲染）。
@@ -125,33 +129,97 @@ def _join_call(tag, ctx):
     items = []
     for it in lst:
         if not field or field == 'this':
-            items.append('' if it is None else str(it))
+            # None -> '0'：用于 mermaid xychart 等数值数组，避免 [1, , 3] 语法错误
+            items.append('0' if it is None else str(it))
         else:
             v = _resolve(field, it)
-            items.append('' if v is None else str(v))
+            items.append('0' if v is None else str(v))
     return sep.join(items)
 
 
-def _slug_call(tag, ctx):
-    """支持 slug(text) 生成 mermaid 安全节点 ID（空格/非常规字符 -> 下划线，保留中文）。
+def _mermaid_id(val):
+    """生成 mermaid 安全的节点/task ID。
 
-    例：{{ slug this.from }} -> 订单服务 / M1_交易闭环
-    用于 flowchart 节点 ID（mermaid 不允许 ID 含空格）。
+    - 空格 -> 下划线
+    - 点(.) -> 下划线（mermaid gantt/flowchart 的 ID 不允许含 '.'，
+      原 slug 直接删点会丢失层级并可能造成重复 ID 而报错）
+    - 其余非常规字符 -> 下划线
+    - 保证非空（空值回退到稳定的 node_<hash>），且不以数字开头（前缀 '_'）
+    例：{{ mid this.id }} -> SOW1_1 （输入 'SOW1.1'）
     """
+    if val is None:
+        return ''
+    s = re.sub(r'\s+', '_', str(val).strip())
+    # 保留：单词字符 \w（含字母/数字/下划线/中日韩等 unicode 字母）与连字符 '-'；
+    # 其余（点号/标点）-> 下划线。mermaid 接受 unicode 节点/task ID，
+    # 故保留中文，仅把 '.' 等非常规字符转为 '_'（同时避免 gantt 非法 task id）。
+    s = re.sub(r'[^\w-]', '_', s)
+    if s == '' or s == '_':
+        h = abs(hash(str(val))) % 1000000
+        return f'node_{h:06d}'
+    if s[0].isdigit():
+        s = '_' + s
+    return s
+
+
+def _mermaid_label(val):
+    """mermaid 标签文本（用于 ["..."] / "..." 内）。
+
+    - 双引号 '"' -> 单引号 "'"（避免破坏双引号字符串）
+    - 折叠连续空白/换行为单个空格并去首尾空白
+    例：{{ mlabel this.from }} -> 订单服务（即使原文含引号/换行也安全）
+    """
+    if val is None:
+        return ''
+    s = str(val).replace('"', "'")
+    # 注意：'\n' 是字面量反斜杠+n，不被 \s 匹配，故节点内换行仍保留
+    s = re.sub(r'[ \t\r\f\v]+', ' ', s).strip()
+    return s
+
+
+def _gantt_name(val):
+    """甘特图任务显示名（':' 分隔符之前的文本）。
+
+    在 gantt 行 `任务名 :taskId, start, end` 中，任务名里的冒号会破坏分隔，
+    故把 ':' 换成全角 '：'；并复用标签安全处理。
+    """
+    s = _mermaid_label(val)
+    s = s.replace(':', '：')
+    return s
+
+
+def _slug_call(tag, ctx):
+    """兼容旧写法：slug(x) / slug x 等价于 mid(x)（mermaid 安全 ID）。"""
     m = re.match(r'^\s*slug\s*\((.*)\)\s*$', tag, re.S)
     if not m:
-        # 兼容文档示例中的无括号写法：{{ slug this.from }}
         m = re.match(r'^\s*slug\s+(.+?)\s*$', tag, re.S)
     if not m:
         return None
-    inner = m.group(1).strip()
-    val = _resolve_or_literal(inner, ctx)
-    if val is None:
-        return ''
-    s = re.sub(r'\s+', '_', str(val))
-    # 仅保留 字母/数字/下划线/连字符/中日韩汉字，其余去除
-    s = re.sub(r'[^0-9A-Za-z_\-\u4e00-\u9fff]', '', s)
-    return s
+    return _mermaid_id(_resolve_or_literal(m.group(1).strip(), ctx))
+
+
+def _call_helper(tag, ctx):
+    """分发已知辅助函数调用：slug / mid / mlabel / gname / join。
+
+    返回 None 表示这不是一个可识别的辅助调用（交由通用变量求值处理）。
+    """
+    m = re.match(r'^\s*(\w+)\s*\((.*)\)\s*$', tag, re.S)
+    if m:
+        name = m.group(1)
+        arg = m.group(2).strip()
+        if name in ('slug', 'mid'):
+            return _mermaid_id(_resolve_or_literal(arg, ctx))
+        if name == 'mlabel':
+            return _mermaid_label(_resolve_or_literal(arg, ctx))
+        if name == 'gname':
+            return _gantt_name(_resolve_or_literal(arg, ctx))
+        if name == 'join':
+            return _join_call(tag, ctx)
+        return None
+    # 兼容文档示例中的无括号 slug 写法：{{ slug this.from }}
+    if tag.startswith('slug '):
+        return _slug_call(tag, ctx)
+    return None
 
 
 # ---------- 块匹配 ----------
@@ -266,9 +334,7 @@ def _parse(text, ctx):
             out.append(_parse(branch, ctx))
             i = ni
         else:
-            res = _join_call(tag, ctx)
-            if res is None:
-                res = _slug_call(tag, ctx)
+            res = _call_helper(tag, ctx)
             if res is not None:
                 out.append(res)
             else:
