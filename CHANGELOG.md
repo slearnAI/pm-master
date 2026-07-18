@@ -1,147 +1,46 @@
-# Changelog · PM Master
+# Changelog · PM Master v2
 
-> 版本号与 `SKILL.md` 的 `metadata.version`、`_user_meta.json` 的 `version` 保持一致。
+## 2.0.0 (2026-07-19)
 
-## 1.3.6 (2026-07-18)
+### 架构性重构：从"参考手册"到"强制执行手册"
 
-### 修复：项目群级排期 + SOW 子计划 + Mermaid 里程碑 + 组合看板色标
-- **`build_schedule.py` 新增 `--level program` 与 `--sow <SOW_ID>` 两种视图（修复 #1/#2：缺项目群级排期；SOW 排期未归属 SOW 计划）**：
-  - `--level program` → `plans/schedule_program_gantt.md`：仅里程碑级 SOW 汇总包（`tier: program`）+ 阶段里程碑，聚焦**项目群级规划**，不展开叶子（修复指导 a：项目群层级聚焦项目群规划）。
-  - `--sow SOW1` → `plans/<sow>/schedule_gantt.md`：仅该 SOW 子树，作为「该 SOW 自己的子计划」，与 kick-off 同处一个子计划文件夹，**可独立执行、又通过 `project.name` + SOW id 与父项目保持关联**（修复指导 b：SOW kick-off 作为子项目，既关联又可独立执行）。
-  - 默认 full 视图对 program 类型自动降级为 program 视图。
-- **`build_sow_kickoff.py` 输出改为 `plans/<sow>/kickoff.md`**（原 `plans/kickoff/<sow>_kickoff.md`）：与 SOW 排期同处子计划文件夹，写回 `artifacts.sow_kickoff_<slug>` 与 `artifacts.sow_plan_<slug>`。
-- **修复 Mermaid 甘特里程碑语法（修复 #3：`Invalid date:M1`）**：里程碑行改为 `name :milestone, <date>`（去掉误置于日期位的 id），非里程碑行保持 `name :<mid(id)>, <start>, <end>`。
-- **`portfolio_dashboard.md` 健康度单元格加 `sev_icon` 色标图标（修复 #4）**：渲染 🟢🟡🔴，与图例一致。
-- **OpenClaw 英文包对齐**：`build_schedule.py` / `build_sow_kickoff.py` 运行时输出（`view_label` / 提示 / 兜底值）全部英文化，与英文模板一致；`SKILL.md` / 阶段参考文档 / `templates-index.md` 同步三视图与 SOW 子计划路径。
+**核心问题诊断**：v1.3.6 在多次迭代中积累了201行SKILL.md、14个脚本、12个references、35个模板——功能全面但输出不稳定。根因分析见审查报告。
 
-## 1.3.5 (2026-07-17)
+### 重大变更
 
-### 修复：WBS→排期交付物 + per-SOW 启动会 + 风险色标图标
-- **新增 `scripts/build_schedule.py`（修复 #1：WBS 没变成排期计划）**：
-  - 正向排程（forward pass）：以项目起始日 + 各任务工期 + 依赖(dependsOn) 推算每个任务起止日期；
-  - 回写 `project.yaml` 的 `wbs[].start/end`（单一事实源，wbs.md 与 schedule_gantt.md 共用同一套日期）；
-  - 基于 wbs 派生 `tasks` 并渲染 `templates/waterfall/schedule_gantt.md` → `plans/schedule_gantt.md`，写回 `artifacts.schedule_gantt`。这是 P0/P1 规划的**主要排期交付物**（waterfall/hybrid 规划期必跑）。
-- **新增 `scripts/build_wbs.py`（修掉 `wbs.md` 对 `build_wbs.py` 的悬空依赖）**：按视图（full/program/component）过滤 + 按领域(domain)分组，渲染 `plans/wbs.md`；并修正 `wbs.md` 表体只遍历组、未遍历 `this.items` 导致表体为空的缺陷。
-- **新增 per-SOW 启动会（修复 #2：SOW 级 kick-off 没产出工件）**：
-  - 新增模板 `templates/common/sow_kickoff.md` 与 `scripts/build_sow_kickoff.py`；
-  - 自动识别 SOW 级 summary 包（`summary: true` 或带子包的顶层包），为每个 SOW 产出 `plans/kickoff/<sow>_kickoff.md`（对齐范围/交付物/责任人/首批行动），写回 `artifacts.sow_kickoffs`。
-- **风险登记册色标图标（修复 #3）**：
-  - `scripts/render.py` 新增 `sev_icon()` / `risk_icon()` 助手（绿→🟢 / 黄→🟡 / 橙→🟠 / 红→🔴，兼容中英文 severity 与 low/medium/high/critical）；
-  - `templates/common/risk_register.md` 的 5×5 矩阵、色带与严重度列均加回颜色 emoji 图标（字符作为兜底保留）。
-- 同步更新 `SKILL.md` Step 4 / §4 / §5、`references/phases/p0-p1-initiation-planning.md`、`references/templates-index.md`；三个新脚本与模板、色标助手同步进 OpenClaw 纯英文包。
+#### SKILL.md 重构
+- 从201行压缩到~90行，移除所有参考资料到references
+- 所有规则从"建议/推荐"改为"必须/禁止/否则阻断"
+- 8条核心铁律前置，不可违反
+- 工作流每步增加校验点
+- 意图→产物路由表精简
 
-## 1.3.4 (2026-07-16)
+#### Sub-Agent 通信协议（新增）
+- `references/subagent-protocol.md`：定义JSON Schema回报格式
+- `scripts/subagent_check.py`：子Agent产出自动校验
+- 子Agent行为规范：必须做的事/禁止做的事/异常处理
 
-### 修复：Mermaid 渲染稳定性 + SOW 级 WBS 强制专家拆解
-- **Mermaid 渲染加固（`scripts/render.py`）**：
-  - 新增 mermaid 安全辅助 `mid()` / `mlabel()` / `gname()`；原 `slug()` 改为复用 `mid()`（保留中文节点 ID，仅把空格/点号/非常规字符转为下划线，保证非空且不以数字开头）。
-  - 主要修复：`slug()` 直接删点号曾把 `SOW1.1` 变成 `SOW11`，造成**重复/非法节点 ID → mermaid 报错**；空值曾生成空节点 id（非法）。现统一为合法、层级保留（如 `SOW1_1`）。
-  - `mlabel()` 转义标签内双引号、折叠空白；`gname()` 额外把甘特任务名里的 `:` 转全角 `：`，避免破坏 `name :id` 分隔。
-  - `join()` 对 `None` 回退为 `0`，避免 xychart 数组出现 `[1, , 3]` 而崩溃。
-- **`render_docx.py` 优雅处理 mermaid**：python-docx 分支新增围栏代码块检测——`mermaid` 块优先用 `mmdc`（若已装）渲染成 PNG 嵌入，否则作为带标注的代码块输出，消除原先的乱码/报错。
-- **6 个 mermaid 模板改用安全辅助**：`waterfall/wbs.md`、`waterfall/schedule_gantt.md`（gname+mid）、`program/dependency_map.md`、`hybrid/macro_micro_map.md`、`hybrid/hybrid_governance.md`（mid+mlabel）；`agile/burndown.md` 受益于 `join` 加固。
-- **SOW 级 WBS 强制走专家拆解（`scripts/consistency_check.py` + `SKILL.md`）**：
-  - 凡「领域活动缺 `role` 标签」或「领域活动 `estimate` 超 `control.granularity_threshold`（默认 10 人天）」→ **默认致命（exit 1 阻断交付）**，强制走 `dispatch.py` → 领域专家子 Agent 拆解，主控不得直接拆分绕过。
-  - 非领域活动的超阈值仅保留为告警（通用颗粒度提示）；`program` 级 `summary` / `milestone` / `tier: program` 汇总行豁免（项目群颗粒度本就到里程碑级）。
-  - `SKILL.md` Step 2.5 增加「禁止主控自拆（强制）」硬规则，§6 措辞改为默认致命；`references/activity-expert-map.md §5` 同步。
-  - `test_gate_engine.py` 夹具 WBS 补 `role`（建模专家产出的叶子包），套件恢复 66/66 通过。
+#### 执行期脚本补齐（新增）
+- `scripts/execution_driver.py`：执行驱动引擎
+  - 读取WBS状态，生成可执行工作包清单
+  - 追踪Sprint/迭代进度
+  - 自动触发control_engine巡检
+  - 支持JSON输出
 
-## 1.3.3 (2026-07-16)
+#### Agent层状态机锁（新增）
+- `project.yaml` 新增 `_checkpoint` 字段
+- 追踪当前工作流步骤
+- 非法跳步直接拒绝
 
-### 英文文档与双语文档同步规则
-- 新增英文版 `README.en.md`（与 OpenClaw 纯英文技能包同源生成），作为本技能英文说明文档。
-- 确立「中文与英文双语文档同步」规则：每次技能变更须同步更新 `README.md`（中文）与 `README.en.md`（英文），并与 `SKILL.md` / `CHANGELOG.md` / 版本号保持一致（延续 v1.2.1 确立的「每次技能变更同步 README」规则）。
-- 同步发布 OpenClaw 兼容的纯英文技能包（`pm-master-openclaw-v1.3.2.zip`）：整包译为英文（SKILL.md / README / references / templates / scripts 注释与文案 / config / 示例），内部中文阶段与状态常量（启动 / 规划 / 执行 / 监控 / 收尾 / 组合定义 / 组合交付 / 组合收尾）统一改为英文规范词，测试套件 `test_gate_engine.py` 同步改为英文断言并 66/66 通过。
+#### 配置增强
+- `config.yaml` 新增 execution/quality_gate/stage_gates/operational_control 配置块
+- 分层配置更清晰
 
-## 1.3.2 (2026-07-16)
+### 保持不变
+- 所有 v1.3.6 脚本（render/render_docx/consistency_check/build_*/schedule_health/evm/baseline/control_engine/gate_engine/dispatch/comm_send/project_state）完全兼容
+- 所有 35 个模板完全兼容
+- 所有方法论 references 完全兼容
+- project.yaml 核心结构兼容（新增字段可选）
 
-### 进一步脱敏（合规 · 消除法律风险）
-- `scripts/rollup_program_wbs.py` 的内置示例映射进一步去标识化：
-  - `COMPONENT_MAP`：剥离 SOW 组件 slug 的描述性后缀（`sow1-data-modelling` → `sow1`，…，`sow9-ts` → `sow9`，`external-pii` → `ext-pii`），仅保留编号标识。
-  - `PHASE_NAME`：阶段别名由客户专属描述（Wave 1–4 基础建模 / 金融与协议 / FSAS 分析结构 / NOS 归档与集成）改为中性 `Stream 1–4` 命名，移除 FSAS / NOS / 金融与协议等客户系统/领域泄露。
-  - 三处「某保险数据湖项目 / 保险数据湖」注释与告警文案统一改为「示例项目」，不再暴露真实行业与客户。
-- `CHANGELOG.md`：将 1.1.0 中关于内置示例的语义描述「某保险数据湖」改为中性的「示例项目」。
-
-> 说明：保留的 `Wave` / `保险数据湖` 命中（如 `references/methodology-hybrid.md`、`hybrid_playbook.md`、`expert-roles.md`）属**通用方法论/领域示例词汇**，非真实客户或厂商名，引擎路由与设计依赖之，故维持不变。
-
-## 1.3.1 (2026-07-16)
-
-### 脱敏（合规 · 消除法律风险）
-- 全量扫描技能文件，移除真实客户名与厂商名等敏感信息，统一改为代号：
-  - 真实保险行业客户名 → `客户A`（代号 `ALPHA`）；真实 MPP 数仓厂商名 → `MPP 数仓`（通用占位）；另一被点名的集成商经扫描确认本仓库**不存在**，无需处理。
-  - `references/activity-expert-map.md`：`insurance-data-lake` 的示例项目由真实客户项目名改为 `客户A 数据湖（代号 ALPHA，MPP 数仓）`，角色中的厂商专属 ETL 工程师改为 `MPP 数仓 TPT/ETL 工程师`。
-  - `scripts/dispatch.py`：专家角色标题中的厂商名改为 `MPP 数仓 TPT/ETL 工程师` / `MPP 数仓/平台工程师`。
-  - `references/expert-roles.md`：技术栈示例改为 `MPP 数仓、云数仓`；领域特化改为 `MPP 数仓 → 批量加载（厂商 TPT/MLOAD 类工具）`。
-- 经二次全仓扫描，真实客户名 / 厂商名已实现 **0 残留**；`examples/sample_project.yaml` 与 `rollup_program_wbs.py` 内置示例均为通用占位（无客户名），予以保留。
-- README / SKILL / `_user_meta.json` 版本同步至 1.3.1（延续「每次技能变更同步 README」规则）。
-
-## 1.3.0 (2026-07-16)
-
-### operational 双轨并行（P2 执行 + P3 监控 多 Agent）
-- **编排双轨**：进入 `operational` 后，执行轨（领域专家 Agent 持续交付）与监控轨（`monitoring-agent` 周期跑 `control_engine.py` 并回流升级项）**以多 Agent 并行**落地，共享 `project.yaml`+`baselines/` 且字段零冲突（执行轨写 `actuals`/`wbs_progress`/交付物，监控轨写控制/状态报告与 RAID 更新）。
-- `orchestration.md` 新增 §3.4「operational 双轨」+ §3.2 组合表增「operational 双轨」行；`lifecycle.md §6.1` 并发说明升级为双轨引用；`p2-execution.md` / `p3-monitoring.md` §8 衔接引用双轨与 `monitoring-agent`。
-- `agents.md` 新增 §9 `monitoring-agent`（监控轨角色）。
-
-### 对外沟通与邮件审批门（Communication Send Gate）
-- **分层配置（policy/data 分离）**：技能根新增 `config.yaml`（安装期策略/护栏）——`email.enabled` / `email.backend`（agent-mail·himalaya·gog·smtp）/ `email.default_from` / `email.requires_send_approval`（**硬护栏，项目不可关闭**）；项目数据在 `project.yaml.communication:`（`from` / `cadence` / `approval_override`（仅可收紧）/ `contacts[]`）。
-- **联络簿**：`templates/common/communication_plan.md` 新增「相关方联络簿」段（姓名/角色/组织/邮箱/电话/时区/备注）；`stakeholder-agent` 定稿时把联络人同步进 `project.yaml.communication.contacts[]`；`templates-index.md`、`project-schema.md` 同步数据键契约与 `governance.communications[]` 审计块。
-- **`scripts/comm_send.py`（审批门封装）**：按角色解析收件人（查 `communication.contacts[]`）、强制 `--approve`、外部邮件按 `approval_override.require_sponsor_cosign` 须 sponsor 会签、发送后写 `governance.communications[]` 审计；`--dry-run` 仅打印+审计不真正外发；未审批/被护栏拒绝直接 `exit 1`。
-- **`agents.md` 新增 §8 `communication-agent`**：起草邮件 → 呈现待批 → 经 `comm_send.py` 审批门外发 → 登记审计；明确"绝不自行外发"。
-- `SKILL.md` §6 新增「operational 双轨并行」与「对外邮件须过审批门」规则；§5 脚本速查补 `comm_send.py`。
-- **README.md 同步至 v1.3.0**：§2 增「operational 双轨并行 / 对外沟通与邮件审批」能力、§3.1 补 `config.yaml` 安装期说明、§7 补 `comm_send.py` 行、§12 版本说明（延续「每次技能变更同步 README」规则）。
-
-## 1.2.2 (2026-07-16)
-
-### 阶段门引擎单测套件（CI 门禁）
-- **新增 `scripts/test_gate_engine.py`（standalone，无需 pytest）**：为 `gate_engine.py` 提供 66 条断言的回归保护，两层覆盖——
-  - **纯函数/逻辑层**：`GATES` 表不变量、软门无硬准则、硬门仅含控制门/收尾门、`phase_label_for_state` 路由（含「执行→监控 必须写入监控」历史 bug 的回归锁定）、`chk_*` 助手、`entry_criteria` 按方法论分支（敏捷进执行免基线、瀑布进执行含基线准则、收尾缺交付物判不过）。
-  - **CLI 集成层**：真实子进程运行 `gate_engine.py` 及其依赖的 `consistency_check.py` / `control_engine.py`，覆盖 waterfall/agile/iteration-hybrid 与项目群四方法论，验证软门（规划/监控）翻转、硬门（执行/收尾/组合收尾）通过、缺基线/缺验收/收益未实现/前置状态不符/未知目标 的阻断、dry-run 不落盘、`--status` 输出。
-- 退出码契约：`0`=全过，`1`=有失败，可直接挂 CI 质量门。
-- **README.md 同步至 v1.2.2**：§7 脚本速查补 `test_gate_engine.py` 行；版本号与 §12 变更说明更新（延续 v1.2.1 确立的「每次技能变更同步 README」规则）。
-
-## 1.2.1 (2026-07-16)
-
-### 文档同步
-- **README.md 同步至 v1.2.x**：补充「阶段化交付 / 阶段门审批」核心能力、§4.5 阶段模块与阶段门、`gate_engine.py` 脚本速查、阶段流转强制门规则、4 个阶段模块参考索引；版本号升至 1.2.1。
-- 确立规则：**每次技能变更都同步更新 README.md**（与 SKILL.md / CHANGELOG / 版本号保持一致）。
-
-## 1.2.0 (2026-07-16)
-
-### 阶段模块与阶段门（Phase Modules & Gates）
-- **新增 4 个阶段模块**（`references/phases/`）：`p0-p1-initiation-planning.md`（启动+规划）、`p2-execution.md`（执行）、`p3-monitoring.md`（监控）、`p4-closeout.md`（收尾）。每个模块定义该阶段的**活动 / 必产出交付物 / 入口准则 / 出口准则 / 阶段门审批清单**，并方法论适配（waterfall/agile/iteration/hybrid/项目群）。
-- **新增 `scripts/gate_engine.py`（阶段门引擎）**：按 `phase`↔`lifecycle_state` 模型评估进入目标阶段的入口准则；审批通过后翻转 `project.phase` 与 `lifecycle_state`、向 `governance.stage_gates` 追加门记录、在 `docs/gate_reports/` 产出阶段门评审报告并登记到 `artifacts`。
-- **硬门复用既有引擎**（避免逻辑重复）：进 `执行` 须 `consistency_check.py` exit 0（waterfall/hybrid 另须 `baseline.py --freeze`）；进 `收尾` 须 `control_engine.py` exit 0 + 验收/复盘交付物 +（项目群）收益闭环。未通过则 **exit 1 拒绝推进，不可跳过**。
-- **门映射**：G0→1 启动→规划（软门/PM）、**G1→2 规划→执行（硬门/sponsor）**、G2→3 执行→监控（软门/PM，operational 内并发）、**G3→4 监控→收尾（硬门/sponsor）**。对齐 `lifecycle.md §5/§6`。
-- `SKILL.md`：Step 1 路由按 `phase` 加载对应阶段模块；§5 增加 `gate_engine.py` 用法；§6 增加"阶段流转须过阶段门（强制）"规则；§7 索引登记 4 个阶段模块。
-- `lifecycle.md`：新增 §6「阶段模块与阶段门」——阶段模块↔门↔状态机映射表、硬门自动化准则、`gate_engine.py` 用法。
-- `project-schema.md`：注明 `governance.stage_gates` 记录结构。
-
-## 1.1.0 (2026-07-16)
-
-### 可选增强（§5）
-- **控制门技术强制**：`control_engine.py` 新增「控制门 Gate」控制项，校验 `lifecycle_state == operational`；未进入运营控制阶段时标记为 AMBER 并记入升级项 `gate_not_operational`，贴合 `lifecycle.md` §5 的 `planning→baselined→operational` 强制串行纪律（不破坏「仅 RED 才 exit 1」的既有契约）。
-- **项目群 rollup 解耦**：`rollup_program_wbs.py` 的组件 / 阶段映射改为可从 `project.yaml` 的 `program.components`（SOW id → 组件 slug）与 `governance.waves`（阶段 key → 阶段名）读取；缺省才回退内置示例（示例项目）并给出警告，不再硬编码单一项目。
-- **版本可追溯**：新增 `CHANGELOG.md`；`_user_meta.json` 增加 `version` 字段；技能版本升至 `1.1.0`。
-
-### 同期修复与加固（来自评审第一轮）
-- 修复空 `wbs` 项目群 `rollup_program_wbs.py` 崩溃。
-- 修复 4 张列表模板（`risk_register` / `change_log` / `benefits_realization` / `program_charter`）因 `| {{#each}}` 写法导致表首多出一列。
-- 让专家调度「领域特化」真正生效：`init_project.py` 骨架补 `domain` / `product` 并新增 `--domain` / `--product` 参数。
-- 移除 4 个脚本中 `eval(f.read())` 安全兜底，改为缺 PyYAML 时显式报错。
-- `usage.md` 模板计数（30→35、common 11→16）与脚本速查表同步补全。
-
-### 文档与健壮性（来自评审第二轮）
-- 新增 `references/project-schema.md`：`project.yaml` 完整字段结构、质量门必填项、子 Agent 协同约定。
-- `SKILL.md` §3 说明 TeamCreate 多 Agent 派发机制；§5 增加脚本异常处理与降级说明；§7 登记 `project-schema.md`。
-- `lifecycle.md` §5.3 补「项目群阶段 ↔ 状态机映射」「operational 与 monitor 关系」「退出 operational 的 5 条出口条件」。
-
-### 发布
-- **已发布至 `slearnAI/pm-master`（private）**：v1.1.0 推送至 `https://github.com/slearnAI/pm-master`（私有仓库，默认分支 `main`）。提交历史保留 `v1.0 → v1.1.0` 线性演进；本次同时清理了仓库内误提交的 `__pycache__`，并在 `.gitignore` 补充 Python 缓存忽略。Git tag：`v1.1.0`。
-
-## 1.0.0
-
-- 初始版本：Builder-First 项目 / 项目群管理技能。
-- 适配 waterfall / agile / iteration / hybrid 四种方法论。
-- 内置模板库（35 个模板 + `_macros.md`）、自研 `render.py` 迷你模板引擎、双轨产出（Markdown → DOCX）。
-- 质量门 `consistency_check.py`、基线化 `baseline.py`、运营控制 `control_engine.py`、专家调度 `dispatch.py`、排期健康度 `schedule_health.py`、挣值 `evm.py`。
-- 四维度路由 + 标准工作流 + `planning→baselined→operational` 强制状态机 + 多 Agent 混合调度（direct / team / fork）。
+### 移除
+- `references/usage.md`（与README重叠，不再需要）
