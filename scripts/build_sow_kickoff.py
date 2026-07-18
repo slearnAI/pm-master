@@ -102,8 +102,6 @@ def main():
     from render import render
 
     root = os.path.dirname(os.path.abspath(a.project))
-    out_dir = a.out_dir or os.path.join(root, 'plans', 'kickoff')
-    os.makedirs(out_dir, exist_ok=True)
 
     if 'artifacts' not in data or not isinstance(data['artifacts'], dict):
         data['artifacts'] = {}
@@ -149,11 +147,19 @@ def main():
         }
         rendered = render(tpl, ctx)
         slug = str(sow_id).replace('.', '_')
-        out_path = os.path.join(out_dir, f'{slug}_kickoff.md')
+        if a.out_dir:
+            out_path = os.path.join(a.out_dir, f'{slug}_kickoff.md')
+        else:
+            # 每个 SOW 一个子计划文件夹（kickoff + 排期同处），可独立执行、与父项目关联
+            out_dir = os.path.join(root, 'plans', slug)
+            os.makedirs(out_dir, exist_ok=True)
+            out_path = os.path.join(out_dir, 'kickoff.md')
         with open(out_path, 'w', encoding='utf-8') as f:
             f.write(rendered)
         rel = os.path.relpath(out_path, root)
         produced.append(rel)
+        data['artifacts'][f'sow_kickoff_{slug}'] = rel
+        data['artifacts'][f'sow_plan_{slug}'] = os.path.relpath(os.path.dirname(out_path), root)
         print(f"[sow_kickoff] 已生成 {sow_id} 启动会：{out_path}")
 
     data['artifacts']['sow_kickoffs'] = produced

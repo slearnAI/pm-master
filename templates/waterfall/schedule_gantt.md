@@ -1,4 +1,4 @@
-# 项目排期与甘特视图 · {{ project.name }}
+# {{ view_label }}排期与甘特视图 · {{ project.name }}
 
 > 排期计划（Schedule / Gantt）基于 WBS 编排任务顺序与依赖关系，标注工期、起止日期与里程碑，形成可供跟踪的项目时间基线。
 
@@ -12,12 +12,12 @@
 
 ```mermaid
 gantt
-    title {{ project.name }} · 项目排期甘特图
+    title {{ project.name }} · {{ view_label }}排期甘特图
     dateFormat YYYY-MM-DD
     axisFormat %m-%d
 {{#each tasks}}
 {{#if this.milestone}}
-    {{ gname(this.name) }} :milestone, {{ mid(this.id) }}, {{this.start}}
+    {{ gname(this.name) }} :milestone, {{this.start}}
 {{else}}
     {{ gname(this.name) }} :{{ mid(this.id) }}, {{this.start}}, {{this.end}}
 {{/if}}

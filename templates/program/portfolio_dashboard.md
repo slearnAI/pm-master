@@ -6,7 +6,7 @@
 | 组件 | 方法论 | 健康度 | CPI | SPI | 负责人 | 备注 |
 |------|--------|--------|-----|-----|--------|------|
 {{#each components}}
-| {{this.name}} | {{this.methodology}} | {{this.health}} | {{this.cpi}} | {{this.spi}} | {{this.owner}} | {{this.note}} |
+| {{this.name}} | {{this.methodology}} | {{ sev_icon(this.health) }} {{this.health}} | {{this.cpi}} | {{this.spi}} | {{this.owner}} | {{this.note}} |
 {{/each}}
 
 ## 判读说明

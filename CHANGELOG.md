@@ -2,6 +2,18 @@
 
 > 版本号与 `SKILL.md` 的 `metadata.version`、`_user_meta.json` 的 `version` 保持一致。
 
+## 1.3.6 (2026-07-18)
+
+### 修复：项目群级排期 + SOW 子计划 + Mermaid 里程碑 + 组合看板色标
+- **`build_schedule.py` 新增 `--level program` 与 `--sow <SOW_ID>` 两种视图（修复 #1/#2：缺项目群级排期；SOW 排期未归属 SOW 计划）**：
+  - `--level program` → `plans/schedule_program_gantt.md`：仅里程碑级 SOW 汇总包（`tier: program`）+ 阶段里程碑，聚焦**项目群级规划**，不展开叶子（修复指导 a：项目群层级聚焦项目群规划）。
+  - `--sow SOW1` → `plans/<sow>/schedule_gantt.md`：仅该 SOW 子树，作为「该 SOW 自己的子计划」，与 kick-off 同处一个子计划文件夹，**可独立执行、又通过 `project.name` + SOW id 与父项目保持关联**（修复指导 b：SOW kick-off 作为子项目，既关联又可独立执行）。
+  - 默认 full 视图对 program 类型自动降级为 program 视图。
+- **`build_sow_kickoff.py` 输出改为 `plans/<sow>/kickoff.md`**（原 `plans/kickoff/<sow>_kickoff.md`）：与 SOW 排期同处子计划文件夹，写回 `artifacts.sow_kickoff_<slug>` 与 `artifacts.sow_plan_<slug>`。
+- **修复 Mermaid 甘特里程碑语法（修复 #3：`Invalid date:M1`）**：里程碑行改为 `name :milestone, <date>`（去掉误置于日期位的 id），非里程碑行保持 `name :<mid(id)>, <start>, <end>`。
+- **`portfolio_dashboard.md` 健康度单元格加 `sev_icon` 色标图标（修复 #4）**：渲染 🟢🟡🔴，与图例一致。
+- **OpenClaw 英文包对齐**：`build_schedule.py` / `build_sow_kickoff.py` 运行时输出（`view_label` / 提示 / 兜底值）全部英文化，与英文模板一致；`SKILL.md` / 阶段参考文档 / `templates-index.md` 同步三视图与 SOW 子计划路径。
+
 ## 1.3.5 (2026-07-17)
 
 ### 修复：WBS→排期交付物 + per-SOW 启动会 + 风险色标图标

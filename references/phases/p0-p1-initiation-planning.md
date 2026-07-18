@@ -66,8 +66,8 @@ python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.ya
 - `dispatch.py`：审计 WBS、特化推荐领域专家（多 Agent 第二层）。
 - `render.py`：渲染上述模板为 Markdown 交付物。
 - `build_wbs.py`：渲染 `plans/wbs.md`（两层颗粒度 WBS 视图，修掉 `wbs.md` 对 `build_wbs.py` 的悬空依赖）。
-- `build_schedule.py`：waterfall/hybrid 把 WBS 正向排程为 `plans/schedule_gantt.md` 排期计划（**P0/P1 主要交付物**，规划期必跑）。
-- `build_sow_kickoff.py`：为每个 SOW 级包产出 `plans/kickoff/<sow>_kickoff.md` 启动会工件（规划期必跑）。
+- `build_schedule.py`：waterfall/hybrid 把 WBS 正向排程为排期计划（**P0/P1 主要交付物**，规划期必跑）：项目/默认 `plans/schedule_gantt.md`；项目群 `--level program` → `plans/schedule_program_gantt.md`（里程碑级 SOW 汇总包 + 阶段里程碑，聚焦项目群级规划，不展开叶子）；单 SOW `--sow <SOW_ID>` → `plans/<sow>/schedule_gantt.md`（该 SOW 自己的子计划）。
+- `build_sow_kickoff.py`：为每个 SOW 级包产出 `plans/<sow>/kickoff.md` per-SOW 启动会工件（与排期同处该 SOW 子计划文件夹，可独立执行、与父项目关联，规划期必跑）。
 - `schedule_health.py`：waterfall/hybrid 算关键路径/浮动（规划期必跑）。
 - `consistency_check.py`：交付前质量门（exit 1 = 阻断）。
 - `baseline.py --freeze`：冻结计划为基线（waterfall/hybrid 进执行前必跑）。

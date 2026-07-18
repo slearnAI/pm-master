@@ -5,7 +5,7 @@ license: MIT
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep
 metadata:
   display_name: "PM Master · 项目与项目群管理"
-  version: "1.3.5"
+  version: "1.3.6"
   category: productivity
 ---
 
@@ -51,9 +51,12 @@ metadata:
 - **Step 4 · 构建产物**：脚手架 + `render.py` 渲染模板 + **运行分析脚本（强制）**。
   - waterfall / hybrid 规划期**必须**把 WBS 真正「转成」排期计划与 WBS 视图交付物（别只把关键路径打印出来就交差）：
     - `python3 build_wbs.py --project <project.yaml>` 渲染 `plans/wbs.md`（两层颗粒度 WBS 视图，修掉 `wbs.md` 对 `build_wbs.py` 的悬空依赖）；
-    - `python3 build_schedule.py --project <project.yaml> [--start YYYY-MM-DD]` 正向排程、回写 `wbs[].start/end`、渲染 `plans/schedule_gantt.md`——这是 P0/P1 的**主要排期交付物**；
+    - `python3 build_schedule.py --project <project.yaml> [--start YYYY-MM-DD]` 正向排程、回写 `wbs[].start/end`、渲染排期计划（P0/P1 主要交付物）：
+        · 项目/默认：`plans/schedule_gantt.md`；
+        · 项目群：`--level program` → `plans/schedule_program_gantt.md`（仅里程碑级 SOW 汇总包 + 阶段里程碑，聚焦项目群级规划，不展开叶子）；
+        · 单 SOW：`--sow <SOW_ID>` → `plans/<sow>/schedule_gantt.md`（该 SOW 自己的子计划，可独立执行）。
     - `python3 schedule_health.py --project <project.yaml>` 算关键路径与浮动（规划期必跑）；
-    - `python3 build_sow_kickoff.py --project <project.yaml>` 为每个 SOW 级包产出 **per-SOW 启动会工件** `plans/kickoff/<sow>_kickoff.md`（对齐范围/交付物/责任人/首批行动，规划期必跑）；
+    - `python3 build_sow_kickoff.py --project <project.yaml>` 为每个 SOW 级包产出 **per-SOW 启动会工件** `plans/<sow>/kickoff.md`（与排期同处该 SOW 子计划文件夹，对齐范围/交付物/责任人/首批行动，规划期必跑；SOW 子计划与父项目通过 `project.name` + SOW id 保持关联，又可独立执行）；
     - `python3 evm.py --data <metrics.yaml>` 算 CPI/SPI（metrics.evm 须在执行/监控阶段建立基线）。
   - agile / iteration：`python3 render.py` 渲染 backlog / sprint_plan / burndown 等，无甘特排期。
   - 交付前**必须**跑 `consistency_check.py --project <project.yaml>`，exit 0 才放过；
@@ -145,8 +148,10 @@ python3 $SKILL_DIR/scripts/dispatch.py --project /workspace/<slug>/project.yaml 
 
 # WBS -> 排期/视图交付物（waterfall/hybrid 规划期必跑，P0/P1 主要交付物）
 python3 $SKILL_DIR/scripts/build_wbs.py --project /workspace/<slug>/project.yaml            # 渲染 plans/wbs.md（两层颗粒度）
-python3 $SKILL_DIR/scripts/build_schedule.py --project /workspace/<slug>/project.yaml [--start 2026-08-01]  # 正向排程 + 渲染 plans/schedule_gantt.md
-python3 $SKILL_DIR/scripts/build_sow_kickoff.py --project /workspace/<slug>/project.yaml     # 每 SOW 级包产出 plans/kickoff/<sow>_kickoff.md
+python3 $SKILL_DIR/scripts/build_schedule.py --project /workspace/<slug>/project.yaml [--start 2026-08-01]            # 正向排程 + 渲染 plans/schedule_gantt.md
+python3 $SKILL_DIR/scripts/build_schedule.py --project /workspace/<slug>/project.yaml --level program                 # 项目群级排期 plans/schedule_program_gantt.md
+python3 $SKILL_DIR/scripts/build_schedule.py --project /workspace/<slug>/project.yaml --sow SOW1                      # 单 SOW 子计划 plans/SOW1/schedule_gantt.md
+python3 $SKILL_DIR/scripts/build_sow_kickoff.py --project /workspace/<slug>/project.yaml     # per-SOW kick-off plans/<sow>/kickoff.md
 
 # 单一事实源读写
 python3 $SKILL_DIR/scripts/project_state.py set project.pm "张三" --file /workspace/<slug>/project.yaml
