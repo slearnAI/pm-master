@@ -2,6 +2,22 @@
 
 > 版本号与 `SKILL.md` 的 `metadata.version`、`_user_meta.json` 的 `version` 保持一致。
 
+## 1.3.5 (2026-07-17)
+
+### 修复：WBS→排期交付物 + per-SOW 启动会 + 风险色标图标
+- **新增 `scripts/build_schedule.py`（修复 #1：WBS 没变成排期计划）**：
+  - 正向排程（forward pass）：以项目起始日 + 各任务工期 + 依赖(dependsOn) 推算每个任务起止日期；
+  - 回写 `project.yaml` 的 `wbs[].start/end`（单一事实源，wbs.md 与 schedule_gantt.md 共用同一套日期）；
+  - 基于 wbs 派生 `tasks` 并渲染 `templates/waterfall/schedule_gantt.md` → `plans/schedule_gantt.md`，写回 `artifacts.schedule_gantt`。这是 P0/P1 规划的**主要排期交付物**（waterfall/hybrid 规划期必跑）。
+- **新增 `scripts/build_wbs.py`（修掉 `wbs.md` 对 `build_wbs.py` 的悬空依赖）**：按视图（full/program/component）过滤 + 按领域(domain)分组，渲染 `plans/wbs.md`；并修正 `wbs.md` 表体只遍历组、未遍历 `this.items` 导致表体为空的缺陷。
+- **新增 per-SOW 启动会（修复 #2：SOW 级 kick-off 没产出工件）**：
+  - 新增模板 `templates/common/sow_kickoff.md` 与 `scripts/build_sow_kickoff.py`；
+  - 自动识别 SOW 级 summary 包（`summary: true` 或带子包的顶层包），为每个 SOW 产出 `plans/kickoff/<sow>_kickoff.md`（对齐范围/交付物/责任人/首批行动），写回 `artifacts.sow_kickoffs`。
+- **风险登记册色标图标（修复 #3）**：
+  - `scripts/render.py` 新增 `sev_icon()` / `risk_icon()` 助手（绿→🟢 / 黄→🟡 / 橙→🟠 / 红→🔴，兼容中英文 severity 与 low/medium/high/critical）；
+  - `templates/common/risk_register.md` 的 5×5 矩阵、色带与严重度列均加回颜色 emoji 图标（字符作为兜底保留）。
+- 同步更新 `SKILL.md` Step 4 / §4 / §5、`references/phases/p0-p1-initiation-planning.md`、`references/templates-index.md`；三个新脚本与模板、色标助手同步进 OpenClaw 纯英文包。
+
 ## 1.3.4 (2026-07-16)
 
 ### 修复：Mermaid 渲染稳定性 + SOW 级 WBS 强制专家拆解

@@ -28,7 +28,8 @@
 
 - **标准启动套件（任何项目）**：`common/project_charter` + `common/stakeholder_register` + `common/raci` + `common/communication_plan`
 - **范围/计划**：`common/wbs`（或 agile `product_backlog` / iteration `iteration_plan`）+ `common/risk_register` + `common/raid_log`
-- **waterfall/hybrid 专属**：`waterfall/requirements_spec` + `waterfall/wbs` + `waterfall/schedule_gantt` + `waterfall/quality_plan` + `waterfall/stage_gate_review`（计划基线门清单）
+- **waterfall/hybrid 专属**：`waterfall/requirements_spec` + `waterfall/wbs`（由 `build_wbs.py` 渲染） + `waterfall/schedule_gantt`（由 `build_schedule.py` 从 WBS 正向排程生成，**P0/P1 主要排期交付物**） + `waterfall/quality_plan` + `waterfall/stage_gate_review`（计划基线门清单）
+- **每 SOW 级包**：`common/sow_kickoff`（由 `build_sow_kickoff.py` 为**每个 SOW 级 summary 包**生成 per-SOW 启动会工件，对齐范围/交付物/责任人/首批行动，规划期必跑）
 - **项目群专属**：`program/program_charter` + `program/portfolio_dashboard` + `program/dependency_map` + `program/benefits_realization` + `common/change_log`
 
 ## 4. 入口准则（Entry）
@@ -64,6 +65,9 @@ python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.ya
 - `init_project.py`：初始化 `project.yaml` 骨架。
 - `dispatch.py`：审计 WBS、特化推荐领域专家（多 Agent 第二层）。
 - `render.py`：渲染上述模板为 Markdown 交付物。
+- `build_wbs.py`：渲染 `plans/wbs.md`（两层颗粒度 WBS 视图，修掉 `wbs.md` 对 `build_wbs.py` 的悬空依赖）。
+- `build_schedule.py`：waterfall/hybrid 把 WBS 正向排程为 `plans/schedule_gantt.md` 排期计划（**P0/P1 主要交付物**，规划期必跑）。
+- `build_sow_kickoff.py`：为每个 SOW 级包产出 `plans/kickoff/<sow>_kickoff.md` 启动会工件（规划期必跑）。
 - `schedule_health.py`：waterfall/hybrid 算关键路径/浮动（规划期必跑）。
 - `consistency_check.py`：交付前质量门（exit 1 = 阻断）。
 - `baseline.py --freeze`：冻结计划为基线（waterfall/hybrid 进执行前必跑）。

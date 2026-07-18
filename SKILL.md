@@ -5,7 +5,7 @@ license: MIT
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep
 metadata:
   display_name: "PM Master · 项目与项目群管理"
-  version: "1.3.4"
+  version: "1.3.5"
   category: productivity
 ---
 
@@ -49,8 +49,13 @@ metadata:
   `python3 scripts/dispatch.py --project <project.yaml>` 生成**调度计划**（标出缺 `role` 标签的领域活动、超阈值的粗包、并特化推荐专家）；对每个包派出对应领域专家子 Agent（用 `references/expert-roles.md` 的 `system_prompt`，代入 `project.domain`/`product`，或路由至 WorkBuddy 专家中心已装的对应专家），拆成叶子工作包（≤ `control.granularity_threshold` 人天，默认 10，ID 前缀如 `SOW1.1`）写回 `project.yaml.wbs`。详见 `references/activity-expert-map.md` 与 `references/orchestration.md §3.3`。
 - **Step 3 · 选执行模式**：见下方「3. 执行模式」。
 - **Step 4 · 构建产物**：脚手架 + `render.py` 渲染模板 + **运行分析脚本（强制）**。
-  - waterfall / hybrid：`python3 schedule_health.py --project <project.yaml>` 算关键路径与浮动；
-    `python3 evm.py --data <metrics.yaml>` 算 CPI/SPI（metrics.evm 须在执行/监控阶段建立基线）。
+  - waterfall / hybrid 规划期**必须**把 WBS 真正「转成」排期计划与 WBS 视图交付物（别只把关键路径打印出来就交差）：
+    - `python3 build_wbs.py --project <project.yaml>` 渲染 `plans/wbs.md`（两层颗粒度 WBS 视图，修掉 `wbs.md` 对 `build_wbs.py` 的悬空依赖）；
+    - `python3 build_schedule.py --project <project.yaml> [--start YYYY-MM-DD]` 正向排程、回写 `wbs[].start/end`、渲染 `plans/schedule_gantt.md`——这是 P0/P1 的**主要排期交付物**；
+    - `python3 schedule_health.py --project <project.yaml>` 算关键路径与浮动（规划期必跑）；
+    - `python3 build_sow_kickoff.py --project <project.yaml>` 为每个 SOW 级包产出 **per-SOW 启动会工件** `plans/kickoff/<sow>_kickoff.md`（对齐范围/交付物/责任人/首批行动，规划期必跑）；
+    - `python3 evm.py --data <metrics.yaml>` 算 CPI/SPI（metrics.evm 须在执行/监控阶段建立基线）。
+  - agile / iteration：`python3 render.py` 渲染 backlog / sprint_plan / burndown 等，无甘特排期。
   - 交付前**必须**跑 `consistency_check.py --project <project.yaml>`，exit 0 才放过；
     控制级门禁（估算缺失 / 排期未联网 / 缺 EVM 基线 / 混合缺微计划 / 风险未校准 5×5 / 未基线化）会直接阻断交付。
   - **规划 → 基线 → 控制门 → 运营（强制串行）**：计划评审通过后用 `baseline.py --freeze` 冻结为基线
@@ -75,7 +80,7 @@ metadata:
 | intent | 主要产物（模板见 templates/） |
 |--------|------------------------------|
 | 规划/启动 | common/project_charter, common/stakeholder_register, common/raci, common/communication_plan, 方法论专属计划模板 |
-| 构建（计划） | waterfall/wbs（含 DoD + 依赖网络）, waterfall/schedule_gantt, agile/product_backlog, iteration/iteration_plan；**须跑 schedule_health** |
+| 构建（计划） | waterfall/wbs（含 DoD + 依赖网络，由 `build_wbs.py` 渲染）, waterfall/schedule_gantt（由 `build_schedule.py` 从 WBS 生成排期计划，P0/P1 主要交付物）, agile/product_backlog, iteration/iteration_plan；**须跑 schedule_health** |
 | 风险 | common/risk_register（须按 5×5 校准，见 references/risk-matrix.md）, common/raid_log |
 | 汇报 | common/status_report, agile/burndown, common/milestone_list, common/closure_report；**执行/监控阶段须跑 evm.py** |
 | 分析 | 运行 evm.py / schedule_health.py，输出指标卡 |
@@ -137,6 +142,11 @@ python3 $SKILL_DIR/scripts/comm_send.py --project /workspace/<slug>/project.yaml
 
 # 专家调度计划：审计 WBS，标出缺 role 标签 / 超阈值的包，并特化推荐专家（多 Agent 第二层）
 python3 $SKILL_DIR/scripts/dispatch.py --project /workspace/<slug>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]
+
+# WBS -> 排期/视图交付物（waterfall/hybrid 规划期必跑，P0/P1 主要交付物）
+python3 $SKILL_DIR/scripts/build_wbs.py --project /workspace/<slug>/project.yaml            # 渲染 plans/wbs.md（两层颗粒度）
+python3 $SKILL_DIR/scripts/build_schedule.py --project /workspace/<slug>/project.yaml [--start 2026-08-01]  # 正向排程 + 渲染 plans/schedule_gantt.md
+python3 $SKILL_DIR/scripts/build_sow_kickoff.py --project /workspace/<slug>/project.yaml     # 每 SOW 级包产出 plans/kickoff/<sow>_kickoff.md
 
 # 单一事实源读写
 python3 $SKILL_DIR/scripts/project_state.py set project.pm "张三" --file /workspace/<slug>/project.yaml

@@ -3,7 +3,7 @@
 > 面向科技行业 PM 的**项目 + 项目群**管理技能。Builder 理念、可执行、内置模板库、支持多 Agent 调度，
 > 适配 **waterfall / agile / iteration / hybrid** 四种实施方法论。
 
-- **版本**：1.3.4
+- **版本**：1.3.5
 - **许可**：MIT
 - **定位**：任何项目/项目群请求都必须落到真实产物（文件），禁止只给建议。
 
@@ -244,7 +244,7 @@ planning → review → baselined → operational → closed
 
 ## 12. 版本与变更
 
-变更历史见 [`CHANGELOG.md`](CHANGELOG.md)。当前版本 **1.3.3**（v1.2.0 引入阶段模块 P0–P4 与阶段门引擎 `gate_engine.py`；v1.2.1 同步本 README；v1.2.2 新增 `gate_engine.py` 单测套件；v1.3.0 新增 **operational 双轨并行** 与 **对外邮件审批门**；v1.3.1 **脱敏**：移除真实客户名 / 厂商名等敏感信息，统一改为代号（客户A / MPP 数仓 / 代号 ALPHA），消除法律风险；v1.3.2 进一步脱敏：`rollup_program_wbs.py` 示例映射去标识化（SOW slug 去后缀 / Wave→Stream / 移除 FSAS·NOS·金融与协议）；v1.3.3 新增英文版 `README.en.md` 并确立「中文与英文双语文档同步」规则）。
+变更历史见 [`CHANGELOG.md`](CHANGELOG.md)。当前版本 **1.3.5**（v1.2.0 引入阶段模块 P0–P4 与阶段门引擎 `gate_engine.py`；v1.2.1 同步本 README；v1.2.2 新增 `gate_engine.py` 单测套件；v1.3.0 新增 **operational 双轨并行** 与 **对外邮件审批门**；v1.3.1 **脱敏**：移除真实客户名 / 厂商名等敏感信息，统一改为代号（客户A / MPP 数仓 / 代号 ALPHA），消除法律风险；v1.3.2 进一步脱敏：`rollup_program_wbs.py` 示例映射去标识化（SOW slug 去后缀 / Wave→Stream / 移除 FSAS·NOS·金融与协议）；v1.3.3 新增英文版 `README.en.md` 并确立「中文与英文双语文档同步」规则；v1.3.4 **Mermaid 渲染稳定性 + SOW 级 WBS 强制专家拆解**；v1.3.5 **WBS→排期交付物（build_schedule/build_wbs）+ per-SOW 启动会（build_sow_kickoff）+ 风险登记册色标图标（sev_icon）**）。
 
 > **文档同步规则**：每次技能变更须同步更新 `README.md`（中文）与 `README.en.md`（英文）两份文档，并与 `SKILL.md` / `CHANGELOG.md` / 版本号保持一致；英文版与 OpenClaw 纯英文技能包同源生成。
 

@@ -3,14 +3,16 @@
 > **视图：{{ view_label }}** — {{ view_note }}
 > 两层颗粒度约定（pm-master）：**项目群层级仅呈现里程碑级**（各 SOW 汇总包 + 各阶段里程碑汇总包）；
 > **组件层级呈现最细叶子工作包级**（含领域专家拆解包）。两者共用单一事实源（`project.yaml`），
-> 由 `build_wbs.py --view` 切换。`slug(this.id)` 生成甘特任务 id，依赖网络由 `wbs[].dependsOn` 定义。
+> 由 `build_wbs.py --view` 切换。`mid(this.id)` 生成甘特任务 id，依赖网络由 `wbs[].dependsOn` 定义。
 
 ## WBS 总表（{{ view_label }}）
 
 | ID | 名称 | 层级 | 领域 | 交付物 | 责任人 | 角色/专家 | 估算(人天) | 工期 | 开始时间 | 结束时间 | 依赖 | 验收准则(DoD) |
 |----|------|------|------|--------|--------|-----------|------------|------|----------|----------|------|---------------|
-{{#each wbs}}
+{{#each wbs_groups}}
+{{#each this.items}}
 | {{this.id}} | {{this.name}} | {{this.level}} | {{this.domain}} | {{this.deliverable}} | {{this.owner}} | {{this.role}}{{#if this.expert}}（{{this.expert}}）{{/if}} | {{this.estimate}} | {{this.duration}} | {{this.start}} | {{this.end}} | {{this.dependsOn}} | {{this.acceptance}} |
+{{/each}}
 {{/each}}
 
 ## WBS 甘特图（mermaid · {{ view_label }}）

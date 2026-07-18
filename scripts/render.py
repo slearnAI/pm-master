@@ -19,6 +19,9 @@ PM Master · 模板渲染引擎（契约脚本）
    - {{ mid(text) }}      -> mermaid 节点/task 安全 ID（空格/点/非常规字符 -> 下划线，保证非空、不以数字开头）
    - {{ mlabel(text) }}   -> mermaid 标签文本（转义双引号、折叠空白，用于 ["..."] 内）
    - {{ gname(text) }}    -> 甘特图任务显示名（标签安全 + 冒号转全角，避免破坏 `name :id` 分隔）
+10. 色标辅助（风险登记册等）：
+   - {{ sev_icon(text) }} / {{ risk_icon(text) }} -> 把严重度(绿/黄/橙/红 或 green/yellow/orange/red 或
+     low/medium/high/critical)映射为颜色 emoji：🟢 绿 / 🟡 黄 / 🟠 橙 / 🔴 红；未知 -> ⚪
 
 数据合并：循环体内通过 `this` 引用当前元素；支持一层嵌套循环（this 会按层覆盖）。
 缺失变量输出空串，不抛错（便于部分数据渲染）。
@@ -188,6 +191,36 @@ def _gantt_name(val):
     return s
 
 
+def _severity_icon(val):
+    """把严重度映射为颜色 emoji，用于风险登记册等色标展示。
+
+    接受中文色字（绿/黄/橙/红）、英文 band（green/yellow/orange/red）、
+    英文等级（low/medium/high/critical）或其任意组合文本。未知 -> ⚪。
+    例：{{ sev_icon this.severity }} -> 🔴（输入 '红' / 'red' / 'critical'）
+    """
+    if not val:
+        return ''
+    s = str(val).strip().lower()
+    if s in ('绿', 'green', 'low'):
+        return '🟢'
+    if s in ('黄', 'yellow', 'medium'):
+        return '🟡'
+    if s in ('橙', 'orange', 'high'):
+        return '🟠'
+    if s in ('红', 'red', 'critical'):
+        return '🔴'
+    # 子串兜底（如 "10 橙"、"15 orange"）
+    if '绿' in s or 'green' in s:
+        return '🟢'
+    if '黄' in s or 'yellow' in s:
+        return '🟡'
+    if '橙' in s or 'orange' in s:
+        return '🟠'
+    if '红' in s or 'red' in s:
+        return '🔴'
+    return '⚪'
+
+
 def _slug_call(tag, ctx):
     """兼容旧写法：slug(x) / slug x 等价于 mid(x)（mermaid 安全 ID）。"""
     m = re.match(r'^\s*slug\s*\((.*)\)\s*$', tag, re.S)
@@ -213,6 +246,8 @@ def _call_helper(tag, ctx):
             return _mermaid_label(_resolve_or_literal(arg, ctx))
         if name == 'gname':
             return _gantt_name(_resolve_or_literal(arg, ctx))
+        if name in ('sev_icon', 'risk_icon'):
+            return _severity_icon(_resolve_or_literal(arg, ctx))
         if name == 'join':
             return _join_call(tag, ctx)
         return None

@@ -17,6 +17,7 @@
 | raci.md | project{name}, raci[{activity,responsible,accountable,consulted,informed}] | RACI 矩阵 |
 | communication_plan.md | project{name}, comms[{audience,info,channel,frequency,owner}], contacts[{name,role,org,email,phone,tz,note}] | 沟通计划（含相关方联络簿，定稿同步 project.yaml.communication.contacts[]） |
 | raid_log.md | project{name}, raid{risks[],assumptions[],issues[],dependencies[]} | RAID 日志 |
+| sow_kickoff.md | project{name}, sow{id,name,domain,owner,objective,scope}, deliverables[{id,name}], experts[], participants[{name,role}], kickoff_date, decisions[], assumptions[], next_actions[], artifacts[], status | SOW 启动会（per-SOW Kick-off，由 build_sow_kickoff.py 从 WBS 生成） |
 | risk_register.md | project{name}, risks[{id,description,category,likelihood,impact,score,severity,owner,mitigation,status}] | 风险登记册（5×5 校准，须 severity） |
 | status_report.md | project{name,phase}, period, progress{summary,completed[],next[]}, metrics{cpi,spi,pv,ev,ac} , risks[], help[] | 状态报告 |
 | lessons_learned.md | project{name}, lessons[{what,went_well,improve,action_owner}] | 经验教训 |
@@ -33,8 +34,8 @@
 | 模板文件 | 数据键 | 说明 |
 |----------|--------|------|
 | requirements_spec.md | project{name}, requirements[{id,title,type,priority,acceptance,status}] | 需求规格 |
-| wbs.md | project{name}, wbs[{id,name,level,deliverable,owner,estimate,duration,start,end,dependsOn,acceptance}] | 工作分解结构（含 DoD 列 + Mermaid 依赖网络甘特图） |
-| schedule_gantt.md | project{name}, tasks[{id,name,duration,deps[],start,end,milestone}] | 进度甘特 |
+| wbs.md | project{name}, wbs_groups[{name,items[{id,name,level,deliverable,owner,role,expert,estimate,duration,start,end,dependsOn,acceptance,gantt_name}]], view_label, view_note, view_group_note | 工作分解结构（含 DoD 列 + Mermaid 甘特；由 build_wbs.py 从 wbs 派生 wbs_groups 后渲染） |
+| schedule_gantt.md | project{name}, tasks[{id,name,duration,deps[],start,end,milestone}] | 进度甘特（由 build_schedule.py 从 wbs 正向排程生成，P0/P1 主要排期交付物） |
 | stage_gate_review.md | project{name}, gate{name,phase,checklist[{item,status,comment}],decision} | 阶段门评审 |
 | quality_plan.md | project{name}, quality{objectives[],checkpoints[{name,criteria,entry,exit}],std} | 质量计划 |
 
