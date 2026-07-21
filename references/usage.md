@@ -221,6 +221,7 @@ All scripts live in `<SKILL_DIR>/scripts/`, run with `python3`.
 | `dispatch.py` | expert dispatch plan (audit WBS missing role / over threshold) | `python3 dispatch.py --project <proj>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]` |
 | `rollup_program_wbs.py` | program WBS two-leveling (milestone / component) | `python3 rollup_program_wbs.py <program>/project.yaml [--derive-actuals]` |
 | `project_state.py` | single-source read/write | `python3 project_state.py get project.phase --file project.yaml` |
+| `confidentiality_check.py` | **发布前**穿透式机密性扫描（覆盖所有文件内容，含二进制/字节码） | `python3 confidentiality_check.py [--pack <skill_root>]`（exit 1 = 含敏感令牌，禁止发布） |
 
 > Render engine `render.py` syntax subset: `{{ project.name }}` variables,
 > `{{#each list}}…{{this.x}}…{{/each}}` loops, `{{#if a == "b"}}…{{else}}…{{/if}}` conditions.
@@ -345,6 +346,30 @@ Just use natural language to trigger; examples for reference:
 - "Check the schedule, **find the critical path and missing dependencies**."
 - "Based on the scope we just agreed, **continue** and break the WBS down to level 3 (**fork relay**)."
 - "**Export these deliverables to Word** and send to stakeholders."
+
+---
+
+## 14. 发布前机密性扫描（Pre-Publish Confidentiality Scan）
+
+**任何把 skill 包（含 `templates/` `scripts/` `references/` 及所有示例）发布到共享分支 / 上架前，
+必须先跑机密性扫描。** 评审必须覆盖「所有文件的内容」，而不仅限文件路径 / 文件名——含二进制
+缓存（如 `__pycache__/*.pyc`，其字节码内嵌 `co_filename` 绝对路径，仅扫文本会漏掉）。
+
+```bash
+python3 <SKILL_DIR>/scripts/confidentiality_check.py
+# 默认扫描 <SKILL_DIR>；也可 --pack <dir> 指定。
+# exit 0 = 全清（无 HIGH 敏感令牌）；exit 1 = 发现泄露，必须先脱敏再发布。
+```
+
+扫描范围与判定：
+- **HIGH（命中即泄露，exit 1）**：`LIC` / `Teradata` / `Vertica` / `Vantage` / `FSAS` / `lic-datalake` /
+  绝对路径 `/Users/` `/home/` `C:\Users` / `qclaw` / `Stephen Lau`。文本与二进制（字节级）均查。
+- **白名单（不报警，已评审确认安全）**：脱敏占位符 `示例客户` / `示例数据湖项目` / `MPP数仓`；
+  通用示例角色 `nos-architect`；通用示例邮箱 `*@corp.com` / `*@external.com` / `*@example.com`；
+  通用示例货币占位 `示例 ₹ 金额` / `₹XX.XM`。
+- 若 `.pyc` 被重新编译且内嵌绝对路径，扫描器会在二进制层抓到 `/Users/…` 并阻断发布——这正是
+  早期评审只扫文本漏掉的环节。`.gitignore` 已忽略 `__pycache__/*.pyc`，但目录快照仍可能带出，
+  故发布前以本扫描器为准。
 
 ---
 

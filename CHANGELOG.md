@@ -1,5 +1,22 @@
 # Changelog · PM Master v2
 
+## 2.2.11 (2026-07-21)
+
+### 机密性评审穿透化 · 新增 `confidentiality_check.py`（发布前必跑）
+- **背景**：用户指出机密性评审不能「仅限路径」，必须覆盖「所有文件的内容（scripts / examples / 任意文件，含二进制）」。
+  早期评审只扫文本，漏掉了编译缓存 `__pycache__/*.pyc`——其字节码内嵌 `co_filename` 绝对路径
+  （如 `/Users/wanman/.qclaw/workspace/...` 或 `/Users/wanman/.workbuddy/...`），会泄露本机用户名/历史工作区。
+- **新增 `scripts/confidentiality_check.py`**：递归穿透扫描整个 skill 包。
+  - 文本文件按行匹配；**二进制（.pyc 等）按字节级扫描**，可抓到内嵌绝对路径；
+  - HIGH 令牌（命中即泄露，exit 1）：`LIC` / `Teradata` / `Vertica` / `Vantage` / `FSAS` / `lic-datalake` /
+    `/Users/` `/home/` `C:\Users` / `qclaw` / `Stephen Lau`；
+  - 白名单（已评审安全，不报警）：`示例客户` / `示例数据湖项目` / `MPP数仓` / `nos-architect` /
+    通用示例邮箱 / `示例 ₹ 金额`；
+  - 自动排除自身源码，避免模式定义自匹配误报。
+- **清理**：删除本地 `__pycache__`（路径泄露源）；`.gitignore` 本已忽略 `*.pyc`，故 `origin/v2` 不含泄露。
+- **固化**：`references/usage.md` §14 将本扫描定为「发布到共享分支前的必跑门禁」。
+- 验证：对当前包运行 exit 0（PASS）；向包内注入含 `/Users/` 绝对路径的 .pyc 后运行立即 FAIL（字节级命中 `@offset`），证明二进制穿透有效。
+
 ## 2.2.10 (2026-07-21)
 
 ### Bug fix · RAID 日志「A · Assumptions」渲染为 JSON 字面量
