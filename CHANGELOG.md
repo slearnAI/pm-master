@@ -1,5 +1,16 @@
 # Changelog · PM Master v2
 
+## 2.2.10 (2026-07-21)
+
+### Bug fix · RAID 日志「A · Assumptions」渲染为 JSON 字面量
+- **根因**：`templates/common/raid_log.md`（及 `sow_kickoff.md`）的假设段落用 `{{#each assumptions}} - {{this}}`，
+  当假设以 `{'text': '...'}` dict 形式存储时，`{{this}}` 输出整段 dict 的 `str()`（`{'text': '<=1600 源表...'}`），
+  用户看到 JSON 风格 blob，可读性被破坏。
+- **修复**：渲染引擎 `scripts/render.py` 新增 `assume_text` 助手——dict 取 `.text`、纯字符串/标量直出、None 回退空串；
+  两模板假设段落改为 `- {{ assume_text(this) }}`。该助手对两种写法均安全，杜绝 dict 被字符串化。
+- 验证：示例客户 程序 `risks/raid_log.md` 的 A 段重渲染为干净项目符号（「- <=1600 source tables…」等 6 条）；
+  纯字符串假设（如 SOW kickoff）亦正常。
+
 ## 2.2.9 (2026-07-21)
 
 ### 运营期交付物护栏（OAG, Operational Artifact Guardrail）— 新增可执行护栏

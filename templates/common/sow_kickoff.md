@@ -51,7 +51,7 @@
 ## 6. Assumptions & Constraints
 
 {{#each assumptions}}
-- {{this}}
+- {{ assume_text(this) }}
 {{/each}}
 
 ## 7. First Action Items

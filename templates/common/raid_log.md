@@ -12,7 +12,7 @@
 
 ## A · Assumptions
 {{#each raid.assumptions}}
-- {{this}}
+- {{ assume_text(this) }}
 {{/each}}
 
 ## I · Issues

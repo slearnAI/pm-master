@@ -233,6 +233,20 @@ def _severity_icon(val):
     return '⚪'
 
 
+def _assume_text(val):
+    """RAID 假设渲染助手：兼容 dict({text: ...}) 与纯字符串两种写法。
+
+    模板里用 {{ assume_text(this) }} 渲染假设条目，避免 dict 被 str() 成
+    "{'text': '...'}" 这类 JSON 字面量而破坏文档可读性。
+    例：{'text': '<=1600 源表'} -> '<=1600 源表'；'<=1600 源表' -> '<=1600 源表'。
+    """
+    if isinstance(val, dict):
+        return str(val.get('text', ''))
+    if val is None:
+        return ''
+    return str(val)
+
+
 def _slug_call(tag, ctx):
     """兼容旧写法：slug(x) / slug x 等价于 mid(x)（mermaid 安全 ID）。"""
     m = re.match(r'^\s*slug\s*\((.*)\)\s*$', tag, re.S)
@@ -304,6 +318,8 @@ def _call_helper(tag, ctx):
             return _severity_cell(_resolve_or_literal(arg, ctx), None)
         if name == 'join':
             return _join_call(tag, ctx)
+        if name == 'assume_text':
+            return _assume_text(_resolve_or_literal(arg, ctx))
         if name == 'eq':
             # eq(a, b) 或 eq a b -> 相等返回 b 的字面值（truthy），否则 ''（falsy），供 {{#if (eq ..)}} 使用
             a_raw, b_raw = None, None
