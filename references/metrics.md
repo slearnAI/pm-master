@@ -1,45 +1,45 @@
-# 指标口径（Metrics）
+# Metric Definitions (Metrics)
 
-统一指标定义，保证不同方法论、不同 Agent 产出可比。
+Unified metric definitions to ensure outputs are comparable across methodologies and Agents.
 
-## 1. 挣值管理 EVM（waterfall / hybrid 主用，iteration 可用）
-来自 `evm.py`，输入 `pv / ev / ac`（可选 `bac`）：
+## 1. Earned Value Management EVM (mainly for waterfall / hybrid, usable for iteration)
+From `evm.py`, inputs `pv / ev / ac` (optional `bac`):
 
-| 指标 | 公式 | 含义 |
+| Metric | Formula | Meaning |
 |------|------|------|
-| PV 计划价值 | —— | 计划到本期末应完成工作的预算 |
-| EV 挣值 | —— | 实际完成工作的预算 |
-| AC 实际成本 | —— | 实际花费 |
-| CPI 成本绩效 | EV/AC | <1 成本超支 |
-| SPI 进度绩效 | EV/PV | <1 进度落后 |
-| CV 成本偏差 | EV−AC | 负为超支 |
-| SV 进度偏差 | EV−PV | 负为落后 |
-| EAC 完工估算 | BAC/CPI | 按当前绩效推算的总成本 |
-| ETC 完工尚需 | EAC−AC | —— |
-| VAC 完工偏差 | BAC−EAC | 负为将超预算 |
+| PV planned value | —— | budget of work planned to be complete by period end |
+| EV earned value | —— | budget of work actually completed |
+| AC actual cost | —— | actual spend |
+| CPI cost performance | EV/AC | <1 cost overrun |
+| SPI schedule performance | EV/PV | <1 behind schedule |
+| CV cost variance | EV−AC | negative means overrun |
+| SV schedule variance | EV−PV | negative means behind |
+| EAC estimate at completion | BAC/CPI | total cost projected at current performance |
+| ETC estimate to complete | EAC−AC | —— |
+| VAC variance at completion | BAC−EAC | negative means will exceed budget |
 
-**健康旗标**：CPI<0.95 → 成本超支；SPI<0.95 → 进度落后；否则健康。
+**Health flags**: CPI<0.95 → cost overrun; SPI<0.95 → behind schedule; otherwise healthy.
 
-## 2. 敏捷指标（agile 主用）
-| 指标 | 含义 | 数据 |
+## 2. Agile Metrics (mainly for agile)
+| Metric | Meaning | Data |
 |------|------|------|
-| Velocity 速率 | 一个 Sprint 完成的故事点 | `metrics.burndown[].points_done` |
-| Burn-down 燃尽 | 剩余工作量随时间下降 | `metrics.burndown[]` 序列 |
-| Lead Time | 需求从进入到完成时长 | 看板流转记录 |
-| WIP | 进行中工作项数量 | 看板在制品 |
-| 流动效率 | 主动工时 / 总时长 | 看板度量 |
+| Velocity | story points completed in one Sprint | `metrics.burndown[].points_done` |
+| Burn-down | remaining work declining over time | `metrics.burndown[]` sequence |
+| Lead Time | duration from a requirement entering to completion | Kanban flow records |
+| WIP | number of work items in progress | Kanban work in progress |
+| Flow efficiency | active work time / total duration | Kanban metrics |
 
-## 3. 迭代指标（iteration 主用）
-- 迭代燃尽（每迭代剩余点数）
-- 迭代完成率 = 完成项 / 承诺项
-- 迭代速率趋势（跨迭代）
+## 3. Iteration Metrics (mainly for iteration)
+- Iteration burndown (remaining points per iteration)
+- Iteration completion rate = completed items / committed items
+- Iteration velocity trend (across iterations)
 
-## 4. 项目群指标（program）
-- 组件健康度汇总（各项目 CPI/SPI 红黄绿）
-- 依赖阻塞数（dependency_map 中"受阻"条目）
-- 收益实现率 = 已核实收益 / 计划收益（`benefits_realization`）
+## 4. Program Metrics (program)
+- Component health rollup (each project's CPI/SPI red/yellow/green)
+- Dependency-blocker count ("blocked" entries in dependency_map)
+- Benefits realization rate = verified benefits / planned benefits (`benefits_realization`)
 
-## 5. 健康度分级（通用）
-- 🟢 绿：CPI≥0.95 且 SPI≥0.95（或敏捷速率稳定、无阻塞依赖）
-- 🟡 黄：0.85≤CPI<0.95 或 0.85≤SPI<0.95
-- 🔴 红：CPI<0.85 或 SPI<0.85，或有关键依赖阻塞 / 关键风险未缓解
+## 5. Health Grading (generic)
+- 🟢 Green: CPI≥0.95 and SPI≥0.95 (or stable agile velocity, no blocked dependencies)
+- 🟡 Yellow: 0.85≤CPI<0.95 or 0.85≤SPI<0.95
+- 🔴 Red: CPI<0.85 or SPI<0.85, or a critical dependency is blocked / a critical risk is unmitigated

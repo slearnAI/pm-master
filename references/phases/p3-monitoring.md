@@ -1,73 +1,73 @@
-# 阶段模块 · P3 监控（Monitoring & Control）
+# Phase Module · P3 Monitoring & Control
 
-> 监控阶段在执行推进的同时**持续进行**：跟踪偏差、控风险、保基线，确保项目按基线预期运行。
-> 它与 **P2 执行**同在 `operational` 状态内并发（进入执行 ⟺ `lifecycle_state=operational`，监控是期间持续活动）。
-> 状态机落位：`监控` ⊆ `operational`。离开本阶段经 **G3→4 收尾门** 翻 `closed`。
+> The monitoring phase runs **continuously** while execution progresses: track variance, control risk, protect the baseline, ensure the project runs as expected against the baseline.
+> It runs concurrently with **P2 Execution** within the `operational` state (entering execution ⟺ `lifecycle_state=operational`; monitoring is a sustained activity during that period).
+> State-machine placement: `监控` ⊆ `operational`. Leaving this phase via the **G3→4 closeout gate** flips `closed`.
 
-## 1. 目标
+## 1. Objectives
 
-持续对照基线衡量进度/成本/风险偏差；在偏差越界前预警与纠偏；维护变更控制纪律。
+Continuously measure schedule/cost/risk variance against the baseline; warn and correct before variance crosses thresholds; maintain change-control discipline.
 
-## 2. 关键活动（方法论适配）
+## 2. Key Activities (Methodology Adaptation)
 
-| 方法论 | 监控活动 | 频率 |
+| Methodology | Monitoring Activities | Frequency |
 |------|----------|------|
-| 通用 | 周期状态报告、风险/问题滚动更新、里程碑跟踪、变更控制 | 按 `control.cadence` |
-| waterfall | EVM 跟踪、关键路径偏差、阶段门中期评审（Gate3） | 周/双周 + 阶段门 |
-| agile | 燃尽/速率跟踪、Sprint 评审反馈、回顾行动闭环 | 每 Sprint |
-| iteration | 迭代燃尽、迭代完成率、迭代评审偏差 | 每迭代 |
-| hybrid | 宏层 EVM + 微层速率/燃尽合并看板；跨层依赖阻塞跟踪 | 宏低频/微高频 |
-| 项目群 | 组合健康度看板、组件 CPI/SPI、依赖阻塞、收益进度 | 组合节奏 |
+| Generic | Periodic status report, rolling risk/issue update, milestone tracking, change control | Per `control.cadence` |
+| waterfall | EVM tracking, critical-path variance, mid-stage-gate review (Gate3) | Weekly/biweekly + stage gate |
+| agile | Burndown/velocity tracking, Sprint review feedback, retrospective action closure | Per Sprint |
+| iteration | Iteration burndown, iteration completion rate, iteration review variance | Per iteration |
+| hybrid | Macro-layer EVM + micro-layer velocity/burndown merged board; cross-layer dependency blocker tracking | Macro low-freq / micro high-freq |
+| program | Portfolio health board, component CPI/SPI, dependency blockers, benefits progress | Portfolio cadence |
 
-## 3. 必产出交付物（模板）
+## 3. Required Deliverables (Templates)
 
-- `common/status_report`（执行/监控期必出，含 CPI/SPI/PV/EV/AC）
-- `agile/burndown` / `iteration/iteration_review`（增量与偏差）
-- `common/control_report`（`control_engine.py` 输出：控制项状态 + 升级项）
-- 滚动更新：`common/risk_register`、`common/raid_log`、`common/milestone_list`、`common/change_log`
+- `common/status_report` (required during execution/monitoring, includes CPI/SPI/PV/EV/AC)
+- `agile/burndown` / `iteration/iteration_review` (increments and variance)
+- `common/control_report` (`control_engine.py` output: control-item status + escalations)
+- Rolling updates: `common/risk_register`, `common/raid_log`, `common/milestone_list`, `common/change_log`
 
-## 4. 入口准则（Entry · G2→3 软门）
+## 4. Entry Criteria (Entry · G2→3 Soft Gate)
 
-- `lifecycle_state == operational`（即已通过 G1→2 控制门进入执行）。
-- `control_register` 已建立、`control.cadence` 已配置（运营控制循环可启动）。
-- 软门（PM 审批即可，见 `p2-execution.md §6`），不改状态机。
+- `lifecycle_state == operational` (i.e. already entered execution via G1→2 control gate).
+- `control_register` established and `control.cadence` configured (operations control loop can start).
+- Soft gate (PM approval suffices, see `p2-execution.md §6`), does not change state machine.
 
-## 5. 出口准则（Exit · 可进入收尾）
+## 5. Exit Criteria (Exit · Ready to Enter Closeout)
 
-硬门（G3→4，自动化校验，缺一不可）：
+Hard gate (G3→4, automated checks, all required):
 
-- **运营控制无 RED**：`control_engine.py --project` **exit 0**（无升级项）。
-- **无未决变更**：变更请求均已关闭（控制引擎的"变更"控制项未超 `open_change_high`）。
-- **验收交付物**：`artifacts.closure_report` 已产出/登记（交付物验收签字）。
-- **经验教训沉淀**：`artifacts.lessons_learned` 已产出/登记。
-- 项目群额外：全部收益已实现/闭环（`program.benefits[].status` ∈ realized/实现/closed）。
+- **No RED in operations control**: `control_engine.py --project` **exit 0** (no escalations).
+- **No pending changes**: All change requests closed (the "change" control item in the control engine does not exceed `open_change_high`).
+- **Accepted deliverables**: `artifacts.closure_report` produced/registered (deliverable acceptance signed off).
+- **Lessons captured**: `artifacts.lessons_learned` produced/registered.
+- Program extra: All benefits realized/closed (`program.benefits[].status` ∈ realized/实现/closed).
 
-## 6. 阶段门审批（Gate · G3→4 收尾门）
+## 6. Phase-Gate Approval (Gate · G3→4 Closeout Gate)
 
-- **门**：G3→4 监控→收尾（收尾门，强制串行，不可跳过）。
-- **审批人**：sponsor（必要时 + PM）。
-- **检查清单**：上述出口准则逐项核验；验收结论；收益核实（项目群）。
-- **命令**（先评估缺口，再审批）：
+- **Gate**: G3→4 Monitoring→Closeout (closeout gate, mandatory sequential, cannot be skipped).
+- **Approver**: sponsor (with PM if necessary).
+- **Checklist**: Verify the above exit criteria item by item; acceptance conclusions; benefits verification (program).
+- **Commands** (assess gaps first, then approve):
 
 ```bash
-SKILL_DIR=<本技能目录>
-# 评估能否收尾（列出未满足项，不改动状态）
+SKILL_DIR=<this skill directory>
+# Assess whether closeout can be entered (lists unmet items, does not change state)
 python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --to 收尾
-# 审批通过：翻转 lifecycle_state → closed，phase → 收尾，记录阶段门，产出评审报告
+# Approve: flip lifecycle_state → closed, phase → 收尾, record phase gate, produce review report
 python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --to 收尾 --approve "张三(sponsor)"
 ```
 
-## 7. 推荐脚本
+## 7. Recommended Scripts
 
-- `control_engine.py`：**核心**。运营期周期巡检，RED 升级 exit 1，可挂定时任务/自动化。
-- `evm.py`：滚动 EVM（actuals 填报 ev/ac）。
-- `schedule_health.py`：waterfall/hybrid 进度偏差。
-- `consistency_check.py`：收尾前最终一致性核验。
-- `gate_engine.py --to 收尾`：收尾门评估/审批。
+- `control_engine.py`: **Core**. Periodic inspection during operations, RED escalation exits 1, can be hooked to scheduled tasks/automation.
+- `evm.py`: Rolling EVM (actuals fill ev/ac).
+- `schedule_health.py`: waterfall/hybrid schedule variance.
+- `consistency_check.py`: Final consistency verification before closeout.
+- `gate_engine.py --to 收尾`: Closeout-gate assessment/approval.
 
-## 8. 衔接
+## 8. Handoff
 
-- 本阶段是 **operational 双轨**的「监控轨」：与 **P2 执行轨**（领域专家 Agent 持续交付）并发于 `operational`。
-  监控轨由专职 `monitoring-agent` 按 `control.cadence` 周期跑 `control_engine.py`，产出 `status_report`/`control_report`，
-  滚动 RAID/里程碑，对 RED 升级项**回流主控**→ 主控路由纠偏回执行轨。双轨编排见 `references/orchestration.md §3.4`。
-- 满足出口准则后翻 `closed` 进入 **P4 收尾**；状态机不可跳步。
+- This phase is the "monitoring track" of the **operational dual-track**: concurrent with the **P2 execution track** (domain-expert Agents continuously delivering) in `operational`.
+  The monitoring track is run by a dedicated `monitoring-agent` per `control.cadence`, executing `control_engine.py`, producing `status_report`/`control_report`,
+  rolling RAID/milestones, and **routing RED escalations back to the main controller** → the main controller routes corrections back to the execution track. See `references/orchestration.md §3.4` for dual-track orchestration.
+- After meeting exit criteria, flip `closed` to enter **P4 Closeout**; the state machine cannot skip steps.

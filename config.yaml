@@ -1,4 +1,4 @@
-# PM Master · 安装期配置（策略 / 护栏层）
+# PM Master v2 · 安装期配置（策略 / 护栏层）
 # ------------------------------------------------------------------
 # 本文件在安装技能时由组织/管理员填写，定义「能力开关 + 安全护栏 + 邮件后端」。
 # 项目级数据（相关方联络人簿、发送节奏、项目内审批覆写）在 project.yaml 的
@@ -9,23 +9,51 @@
 #   - 项目期 = 数据（谁要收邮件、什么频率）。
 # requires_send_approval 等安全护栏为「硬护栏」，项目级配置只能收紧、不能放宽或关闭。
 
+# ---- 执行模式配置 ----
+execution:
+  # 子Agent调度策略
+  subagent_mode: team          # team (TeamCreate并行) | fork (上下文接力) | direct (主控直做)
+  subagent_timeout_minutes: 15 # 子Agent超时时间（分钟）
+  max_parallel_agents: 5       # 最大并行子Agent数
+
+  # 专家调度
+  expert_dispatch: true        # 是否启用领域专家调度（WBS叶子包拆解）
+  granularity_threshold_days: 10  # 叶子包最大人天（超过则必须拆解）
+
+# ---- 质量门配置 ----
+quality_gate:
+  consistency_check_strict: false   # true=告警也阻断交付
+  require_baseline_before_exec: true  # waterfall/hybrid进入执行前必须基线化
+  require_5x5_risk_calibration: true  # 风险必须5×5校准
+
+# ---- 邮件配置 ----
 email:
   enabled: true                 # 是否启用对外邮件能力；false 时 comm_send.py 直接拒绝发送
   backend: agent-mail           # 邮件后端：agent-mail | himalaya | gog | smtp
-                                #   agent-mail  : 本环境内置邮件技能（agent-mail）
-                                #   himalaya    : IMAP/SMTP 客户端（himalaya CLI）
-                                #   gog         : Google Workspace（gog CLI）
-                                #   smtp        : 通用 SMTP（用下方 smtp: 配置）
   default_from: ""              # 默认发件人；留空则回退 project.yaml communication.from
   requires_send_approval: true  # 硬护栏：任何外发邮件必须经 --approve <审批人>，否则 exit 1；项目不可关闭
 
-  # 仅当 backend=smtp 时使用
   smtp:
     host: ""
     port: 587
     user: ""
-    # 密码/令牌走环境变量（如 SMTP_PASSWORD），勿明文写入本文件
     use_tls: true
 
-  # 仅当 backend=agent-mail / himalaya / gog 时，凭证由对应技能/CLI 的登录态提供
-  # （安装期请确保对应邮件技能已连接账号）。
+# ---- 阶段门配置 ----
+stage_gates:
+  # 硬门（不可跳过，必须 sponsor 审批）
+  hard_gates:
+    - G1→2   # 规划→执行（控制门）
+    - G3→4   # 监控→收尾（收尾门）
+  # 软门（PM 审批）
+  soft_gates:
+    - G0→1   # 启动→规划
+    - G2→3   # 执行→监控（operational内并发）
+
+# ---- 运营控制配置 ----
+operational_control:
+  default_cadence_days: 7       # 默认巡检周期（天）
+  schedule_slip_warn_pct: 15    # 进度偏差告警阈值（%）
+  spi_warn: 0.95                # SPI告警阈值
+  cpi_warn: 0.95                # CPI告警阈值
+  open_change_high: 2           # 未决变更请求高水位

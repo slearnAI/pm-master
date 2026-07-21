@@ -195,7 +195,7 @@ def main():
     ap = argparse.ArgumentParser(description="PM Master 项目群 WBS 两层化")
     ap.add_argument('project')
     ap.add_argument('--derive-actuals', action='store_true',
-                    help="把叶子实际% 加权汇总为里程碑实际%，写入 actuals.wbs_progress")
+                    help="把叶子实际%% 加权汇总为里程碑实际%%，写入 actuals.wbs_progress")
     a = ap.parse_args()
 
     path = os.path.abspath(a.project)

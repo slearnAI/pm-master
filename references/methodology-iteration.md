@@ -1,39 +1,39 @@
-# 方法论 · Iteration（迭代 / 时间盒）
+# Methodology · Iteration (Time-boxed)
 
-## 适用场景
-需求中等确定、希望规律交付但不必严格 Scrum 仪式；或团队偏大、按固定时间盒出可验收增量
-（常见于大型研发组织的"双周迭代""月度迭代"）。比 agile 更强调**迭代内范围相对固定**。
+## Applicable Scenarios
+Requirements moderately certain, regular delivery desired but strict Scrum ceremonies not required; or a larger team producing acceptable increments on fixed time boxes
+(common as "bi-weekly iterations" or "monthly iterations" in large R&D organizations). Emphasizes **relatively fixed scope within an iteration** more than agile.
 
-## 生命周期（迭代循环）
+## Lifecycle (iteration cycle)
 ```
-迭代规划 ──▶ 迭代执行(时间盒) ──▶ 迭代评审 ──▶ 迭代复盘 ──┐
+Iteration planning ──▶ Iteration execution (time box) ──▶ Iteration review ──▶ Iteration retrospective ──┐
    ▲                                                  │
-   └──────────────── 下一迭代 ◀───────────────────────┘
+   └──────────────── Next iteration ◀───────────────────────┘
 ```
 
-| 活动 | 频率 | 主要模板 |
+| Activity | Frequency | Main template |
 |------|------|----------|
-| 迭代计划 | 每迭代初 | iteration/iteration_plan |
-| 迭代执行 | 迭代期内 | iteration/iteration_backlog（任务看板） |
-| 迭代评审 | 每迭代末 | iteration/iteration_review |
-| 迭代复盘 | 每迭代末 | agile/retro（复用） |
+| Iteration planning | at the start of each iteration | iteration/iteration_plan |
+| Iteration execution | during the iteration | iteration/iteration_backlog (task board) |
+| Iteration review | at the end of each iteration | iteration/iteration_review |
+| Iteration retrospective | at the end of each iteration | agile/retro (reused) |
 
-## 核心工件（迭代专属模板）
-- `templates/iteration/iteration_plan.md`：迭代目标、承诺范围、关键里程碑、资源
-- `templates/iteration/iteration_backlog.md`：本迭代任务清单（ID/负责人/估时/状态）
-- `templates/iteration/iteration_review.md`：完成项 / 偏差 / 演示结论 / 下迭代输入
+## Core Artifacts (iteration-specific templates)
+- `templates/iteration/iteration_plan.md`: iteration goal, committed scope, key milestones, resources
+- `templates/iteration/iteration_backlog.md`: this iteration's task list (ID/owner/estimate/status)
+- `templates/iteration/iteration_review.md`: completed items / variance / demo conclusions / input to next iteration
 
-## 节奏（cadence）
-- 固定时间盒（如 2 周），迭代长度稳定。
-- 评审 + 复盘在迭代末固定进行；状态报告按迭代出（可复用 common/status_report）。
+## Cadence
+- Fixed time box (e.g., 2 weeks), stable iteration length.
+- Review + retrospective held at fixed points at iteration end; status reports issued per iteration (can reuse common/status_report).
 
-## 关键指标
-- 迭代燃尽、迭代完成率 = 完成项 / 承诺项、速率趋势（见 `references/metrics.md`）
+## Key Metrics
+- Iteration burndown, iteration completion rate = completed items / committed items, velocity trend (see `references/metrics.md`)
 
-## 与 Agile 的区别
-- iteration：迭代内范围锁定、重承诺；agile(Scrum)：更强调价值拉动、DoD、角色化仪式。
-- 模板可互通：iteration_backlog ≈ sprint_plan 的轻量版；复盘共用 retro。
+## Difference from Agile
+- iteration: scope locked within the iteration, commitment-heavy; agile (Scrum): more emphasis on value pull, DoD, role-based ceremonies.
+- Templates are interchangeable: iteration_backlog ≈ a lightweight version of sprint_plan; retrospectives share retro.
 
-## 注意事项
-- 迭代评审要产出"是否达成承诺"的结论，偏差进 `raid.issues`。
-- 跨迭代依赖在 `raid.dependencies` 登记，避免下迭代被阻塞。
+## Notes
+- Iteration review must produce a "whether the commitment was met" conclusion; variances go into `raid.issues`.
+- Register cross-iteration dependencies in `raid.dependencies` to avoid the next iteration being blocked.

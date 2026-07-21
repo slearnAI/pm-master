@@ -41,11 +41,27 @@ import os
 import re
 import sys
 import argparse
+import datetime
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 try:
     import yaml
 except ImportError:
     yaml = None
+
+
+def load_config():
+    """读取安装期 config.yaml；不存在时返回空 dict（惰性，避免循环依赖）。"""
+    for cand in (os.path.join(SCRIPT_DIR, '..', 'config.yaml'),
+                 os.path.join(SCRIPT_DIR, 'config.yaml')):
+        if os.path.exists(cand):
+            try:
+                with open(cand, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f) or {}
+            except Exception:
+                return {}
+    return {}
 
 
 # ---------- 风险 5×5 色带 ----------
@@ -180,9 +196,13 @@ def main():
     ap = argparse.ArgumentParser(description="PM Master 一致性校验（控制级）")
     ap.add_argument('--project', required=True)
     ap.add_argument('--strict', action='store_true',
-                    help="将告警(warnings)也升级为致命问题")
+                    help="将告警(warnings)也升级为致命问题（覆盖 config 默认）")
     a = ap.parse_args()
     data = load(a.project)
+    # 配置优先：config.quality_gate.consistency_check_strict，CLI --strict 可覆盖
+    cfg = load_config()
+    strict_cfg = bool((cfg.get('quality_gate') or {}).get('consistency_check_strict'))
+    strict = a.strict or strict_cfg
     root = os.path.dirname(os.path.abspath(a.project))
     problems = []
     warnings = []
@@ -212,9 +232,19 @@ def main():
     for key, rel in artifacts.items():
         if not rel:
             continue
-        full = rel if os.path.isabs(rel) else os.path.join(root, rel)
-        if not os.path.exists(full):
-            problems.append(f"产物索引 {key} 指向的文件不存在: {rel}")
+        # 支持 list 型产物索引（如 sow_kickoffs 多文件）；逐条校验存在性
+        rels = rel if isinstance(rel, list) else [rel]
+        for r in rels:
+            if not r:
+                continue
+            full = r if os.path.isabs(r) else os.path.join(root, r)
+            if not os.path.exists(full):
+                problems.append(f"产物索引 {key} 指向的文件不存在: {r}")
+    # 单一事实源防漂移：wbs 曾回写但尚未重渲染，提示重跑 build_wbs.py
+    if artifacts.get('wbs_dirty'):
+        warnings.append(
+            "project.yaml.wbs 已更新但 wbs 文档(artifacts.wbs)未重渲染（wbs_dirty 标记）。"
+            "请重跑 `build_wbs.py` 保持文档与事实源一致。")
 
     methodology = (proj.get('methodology') or '').lower()
     ptype = (proj.get('type') or '').lower()
@@ -240,6 +270,137 @@ def main():
         for bk in (data.get('backlog') or []):
             if not has_estimate(bk.get('estimate')):
                 problems.append(f"迭代 Backlog {bk.get('id','?')} 缺少估算")
+
+    # ---- 6b. 计费里程碑完整性（基础布局门禁） ----
+    # 固定费率 SOW（sow_map.fee_type=='fixed' 或子树含 billing.fee_type=='fixed' 且 fee>0）
+    # 必须存在 ≥1 个 milestone + billing.fee_type=='fixed' 的包，否则计划不可测、收入无法确认。
+    def _num(x):
+        if isinstance(x, (int, float)):
+            return x
+        if isinstance(x, str):
+            s = re.sub(r'[^0-9.]', '', x)
+            return float(s) if s else 0.0
+        return 0.0
+    sow_map = data.get('sow_map') or []
+    fee_sows = set()
+    for e in sow_map:
+        # 仅固定费率 SOW 强制计费里程碑；T&M（fee_type=='tm'，fee 为工时上限）不要求
+        if e.get('fee_type') == 'fixed':
+            fee_sows.add(e.get('sow'))
+    for w in wbs:
+        b = w.get('billing') or {}
+        if b.get('fee_type') == 'fixed' and _num(b.get('fee_inr') or b.get('fee')) > 0:
+            # 从包的 SOW 前缀推断归属
+            wid = str(w.get('id', ''))
+            m = re.match(r'^(SOW\d+)', wid)
+            if m:
+                fee_sows.add(m.group(1))
+    if fee_sows:
+        for sow in fee_sows:
+            prefix = sow + '.'
+            has_billing_ms = any(
+                w.get('milestone') and (w.get('billing') or {}).get('fee_type') == 'fixed'
+                and ((w.get('billing') or {}).get('fee_inr') or (w.get('billing') or {}).get('fee') or 0) > 0
+                and (w.get('id') == sow or str(w.get('id', '')).startswith(prefix))
+                for w in wbs)
+            if not has_billing_ms:
+                problems.append(
+                    f"基础布局缺陷（致命）：固定费率 SOW {sow} 子树缺少计费里程碑"
+                    f"（milestone + billing.fee_type=='fixed' 且 fee>0）。"
+                    f"解析 SOW 时必须把每个 'post sign-off/完工证书' 计费事件建模为里程碑包，"
+                    f"否则排期与收入确认不可测。参见 references/sow-parsing-playbook.md。")
+
+
+    # ---- 6c. 拆解纪律（Pillar 1 · 6 因素，仅规划期致命） ----
+    # 进入运营(执行/监控/收尾)后不再阻断（保护已冻结项目，如 LIC），
+    # 但规划/启动期须强制 6 因素拆解 + Critic 自审通过。
+    planning_now = phase in ('启动', '规划', '') or (proj.get('lifecycle_state') in (None, 'planning', 'review', 'baselined'))
+    if planning_now:
+        # 6c-1 拆解 Critic 自审（scope/milestone/payment/assumptions/constraints/dependencies）
+        cc = os.path.join(SCRIPT_DIR, 'critic_review.py')
+        if os.path.exists(cc) and wbs:
+            try:
+                import subprocess as _sp
+                r = _sp.run([sys.executable, cc, '--project', a.project, '--strict'],
+                            capture_output=True, text=True)
+                for line in (r.stdout or '').splitlines():
+                    if line.strip().startswith('✗') or '致命' in line:
+                        pass
+                if r.returncode != 0:
+                    # 把 critic 的致命项逐条引入一致性门
+                    for line in (r.stdout or '').splitlines():
+                        m = re.match(r'\s*-\s+\[(scope|milestone|payment|dependency)\]\s*(.*)', line)
+                        if m:
+                            problems.append(f"拆解 Critic({m.group(1)}): {m.group(2)}")
+            except Exception:
+                pass
+        # 6c-2 decomposition.critic_passed 标志（专家回写后须置 true）
+        decomp = data.get('decomposition') or {}
+        if wbs and not decomp.get('critic_passed'):
+            problems.append(
+                "拆解 Critic 未确认（decomposition.critic_passed != true）："
+                "WBS 经专家拆解后须运行 critic_review.py 并置 critic_passed=true，否则视为未自审。")
+        # 6c-3 假设可量化边界（charter 估算基准的一部分）
+        for ar in (raid.get('assumptions') or []):
+            txt = ar.get('text') if isinstance(ar, dict) else str(ar)
+            if not re.search(r'(≤|>=|<=|不大于|不超过|至少|最多|上限|封顶)\s*\d', str(txt or '')) and \
+               not re.search(r'\d+\s*(个|张|表|人天|人月|周|天|%|倍)', str(txt or '')):
+                problems.append(
+                    f"假设缺少可量化边界：『{(str(txt)[:50])}』——须改为 '≤N 源表/M 核心表' 等，否则 CCB 变更触发不可执行。")
+
+    # ---- 6d. 排期联动（Pillar 2 + 4 · 仅规划期致命） ----
+    if planning_now:
+        # 6d-1 milestone 归属：每叶子须归属某里程碑（Critic 已覆盖，这里补「里程碑非空覆盖」）
+        ms_ids = {w.get('id') for w in wbs if w.get('milestone')}
+        uncovered = [w.get('id') for w in wbs
+                     if not (w.get('summary') or w.get('milestone') or w.get('tier') == 'program')
+                     and not w.get('milestone_ref') and not any(d in ms_ids for d in parse_deps(w.get('dependsOn')))]
+        if uncovered:
+            problems.append(
+                f"里程碑覆盖缺口（Pillar 2）：{len(uncovered)} 个叶子未归属任何里程碑"
+                f"（{', '.join(uncovered[:6])}…），须置 milestone_ref 或让依赖末端落在里程碑。")
+        # 6d-2 支付↔里程碑顺序：固定费率支付行须有对应计费里程碑
+        pay_lines = []
+        for s in ((data.get('program') or {}).get('sows') or []) + (data.get('sow_map') or []):
+            fee = s.get('fee')
+            if isinstance(fee, str):
+                fee = re.sub(r'[^0-9.]', '', fee) or '0'
+            try:
+                fee_v = float(fee)
+            except (TypeError, ValueError):
+                fee_v = 0.0
+            if s.get('fee_type') == 'fixed' and fee_v > 0:
+                pay_lines.append(s.get('sow'))
+        for sow in set(pay_lines):
+            prefix = sow + '.'
+            has_pm = any(w.get('milestone') and (w.get('billing') or {}).get('fee_type') == 'fixed'
+                         and ((w.get('billing') or {}).get('fee_inr') or (w.get('billing') or {}).get('fee') or 0) > 0
+                         and (w.get('id') == sow or str(w.get('id', '')).startswith(prefix))
+                         for w in wbs)
+            if not has_pm:
+                problems.append(
+                    f"支付↔里程碑缺失（Pillar 4）：固定费率 SOW {sow} 有支付行但 WBS 无对应计费里程碑"
+                    f"（须把 'post sign-off' 事件建模为 milestone + billing.fee_type=fixed）。")
+        # 6d-3 支付顺序单调：同一 SOW 的计费里程碑按排期日须单调（付款节奏有序）
+        for sow in set(pay_lines):
+            prefix = sow + '.'
+            dates = []
+            for w in wbs:
+                if w.get('milestone') and (w.get('billing') or {}).get('fee_type') == 'fixed' \
+                   and _num((w.get('billing') or {}).get('fee_inr') or (w.get('billing') or {}).get('fee') or 0) > 0 \
+                   and (w.get('id') == sow or str(w.get('id', '')).startswith(prefix)):
+                    sd = w.get('start')
+                    if sd:
+                        try:
+                            dates.append(datetime.date.fromisoformat(str(sd)[:10]))
+                        except (ValueError, TypeError):
+                            pass
+            if len(dates) >= 2:
+                mono = all(dates[i] <= dates[i+1] for i in range(len(dates)-1))
+                if not mono:
+                    problems.append(
+                        f"支付顺序非单调（Pillar 4）：SOW {sow} 计费里程碑排期日不升序，"
+                        f"付款节奏与交付节奏不一致，须修正依赖/顺序。")
 
     # ---- 7. 排期网络 ----
     if wbs and len(wbs) > 1 and methodology in ('waterfall', 'hybrid'):
@@ -297,6 +458,50 @@ def main():
             warnings.append(
                 f"WBS {wid}『{name}』估算 {est_v:g} 人天超过叶子包阈值 {gran_thr:g}，"
                 f"建议进一步拆解（非领域活动，仅告警）。")
+
+    # ---- 7c. 项目群：SOW 映射 ↔ WBS 一致（合同边界防漂移） ----
+    # 仅在项目群类型校验：program.sow_map[].sow 必须对应 wbs 中的 tier:program / summary 汇总包。
+    if ptype == 'program':
+        wbs_ids = {w.get('id') for w in wbs}
+        sow_map = (data.get('program') or {}).get('sow_map') or []
+        if sow_map:
+            for m in sow_map:
+                sid = m.get('sow')
+                if not sid:
+                    problems.append("program.sow_map 存在无 sow 字段的映射条目")
+                    continue
+                tgt = next((w for w in wbs if w.get('id') == sid), None)
+                if tgt is None:
+                    problems.append(
+                        f"合同边界漂移（致命）：program.sow_map 的 SOW『{sid}』"
+                        f"在 wbs 中找不到对应汇总包（tier:program 或 summary:true）。")
+                elif not (tgt.get('tier') == 'program' or tgt.get('summary')):
+                    problems.append(
+                        f"合同边界漂移（致命）：SOW『{sid}』在 wbs 中不是汇总包"
+                        f"（须 tier:program 或 summary:true），与项目群两层颗粒度约定冲突。")
+            # 反向：wbs 中【顶层】项目群汇总包（tier:program 且 id 不含 '.'）应至少被一个 sow_map 引用
+            # 组件层 phase 汇总包（如 SOW1.1 阶段组，tier:component）不算，避免误报。
+            mapped = {m.get('sow') for m in sow_map}
+            orphans = [w.get('id') for w in wbs
+                       if w.get('tier') == 'program' and not str(w.get('id', '')).count('.')
+                       and w.get('id') not in mapped]
+            if orphans:
+                warnings.append(
+                    f"以下项目群汇总包未被 program.sow_map 引用（建议补映射，避免合同边界遗漏）："
+                    f"{', '.join(orphans)}")
+        # Extract 外包须绑定合同
+        for ex in ((data.get('program') or {}).get('extracts') or []):
+            if (ex.get('mode') or '').lower() in ('外包', 'outsource', 'out') and not ex.get('contract'):
+                problems.append(
+                    f"Extract『{ex.get('id')}』标记为外包但无绑定合同（contract 为空）："
+                    f"外包范围须有合同依据。")
+        # 7d. SOW 费用必填（禁止整表（待定）/TBD/空）
+        for s in ((data.get('program') or {}).get('sows') or []):
+            fee = (s.get('fee') or '').strip()
+            if not fee or fee in ('（待定）', '待定', 'TBD', 'tbd', 'N/A', '-'):
+                problems.append(
+                    f"SOW『{s.get('sow')}』费用(fee)未填或仍为（待定）/TBD："
+                    f"合同锁定后填金额，未锁定须写『TBC — 原因』。")
 
     # ---- 8. EVM 基线 ----
     # 计划价值(PV/BAC)属于计划基线，须在 metrics.evm；当前挣值/实际成本(ev/ac)
@@ -376,6 +581,41 @@ def main():
             if not b.get('owner'):
                 problems.append(f"收益 {b.get('id','?')} 缺少责任人(owner)")
 
+    # ---- 11b. 意图路由交付物强制（对齐 SKILL.md §3 intent→deliverable） ----
+    # 在规划/启动期（planning_now）且为 plan* 意图时，缺少对应交付物 = 致命阻断。
+    # 用法：project.intent 显式声明（plan / plan_program / risk / change / report 等）；
+    # 未声明时按 type+methodology 推断最小集合。
+    intent = str((data.get('project') or {}).get('intent') or '').lower()
+    required_artifacts = []
+    if ptype == 'program':
+        required_artifacts += ['program_charter', 'risk_register', 'dependency_map',
+                                'portfolio_dashboard', 'benefits_realization', 'raci',
+                                'stakeholder_register', 'communication_plan']
+    elif methodology in ('waterfall', 'hybrid'):
+        required_artifacts += ['wbs', 'schedule_gantt', 'risk_register', 'raid_log',
+                                'communication_plan']
+        if methodology == 'hybrid':
+            required_artifacts += ['micro_plan']
+    elif methodology == 'agile':
+        required_artifacts += ['product_backlog', 'sprint_plan', 'risk_register', 'dod']
+    elif methodology == 'iteration':
+        required_artifacts += ['iteration_plan', 'iteration_backlog', 'risk_register']
+    if intent in ('risk',):
+        required_artifacts += ['risk_register', 'raid_log']
+    if intent in ('change',):
+        required_artifacts += ['change_request', 'change_log']
+    # 去重 + 仅检查存在的 key（artifacts 可能用别的 key 名，做宽松匹配）
+    required_artifacts = list(dict.fromkeys(required_artifacts))
+    if planning_now and required_artifacts:
+        for req in required_artifacts:
+            present = any(req in str(k) for k in artifacts) or (req in artifacts)
+            # 同时检查磁盘上是否有对应渲染文件（artifact 指向的文件存在即视为已产出）
+            if not present:
+                # 宽容：若 project.yaml 里 wbs 非空且要求 wbs/raid_log/schedule 但 key 名不同，给告警而非致命
+                warnings.append(
+                    f"意图路由交付物可能缺失：{req}（plan 阶段应产出；"
+                    f"若已用其他 key 渲染请忽略，或显式登记到 artifacts.{req}）")
+
     # ---- 告警（非致命） ----
     if ptype == 'program' or methodology == 'hybrid':
         if 'change_log' not in artifacts:
@@ -399,7 +639,7 @@ def main():
     if not problems:
         print("✓ 通过：无致命一致性问题")
         sys.exit(0)
-    if a.strict:
+    if strict:
         problems = problems + [f"[strict] 告警升级: {w}" for w in warnings]
     print(f"✗ 发现 {len(problems)} 个致命问题（阻断交付）：")
     for p in problems:

@@ -64,10 +64,71 @@ def run(cmd):
     return subprocess.run([sys.executable] + cmd, capture_output=True, text=True)
 
 
-def freeze(project_path):
+def _date_integrity_ok(data):
+    """P2-5: 冻结前校验所有 WBS 日期在合理范围内、依赖闭环。
+    返回 (ok, messages)。若有问题则拒绝冻结。"""
+    import datetime as _dt
+    wbs = data.get('wbs') or []
+    proj = data.get('project') or {}
+    start = proj.get('start_date'); end = proj.get('target_end')
+    msgs = []
+    try:
+        ps = _dt.date.fromisoformat(str(start)[:10]) if start else None
+    except (ValueError, TypeError):
+        ps = None
+    try:
+        pe = _dt.date.fromisoformat(str(end)[:10]) if end else None
+    except (ValueError, TypeError):
+        pe = None
+    for w in wbs:
+        s = w.get('start'); e = w.get('end')
+        try:
+            ws = _dt.date.fromisoformat(str(s)[:10]) if s else None
+        except (ValueError, TypeError):
+            ws = None
+        try:
+            we = _dt.date.fromisoformat(str(e)[:10]) if e else None
+        except (ValueError, TypeError):
+            we = None
+        if ws and ps and ws < ps:
+            msgs.append(f"{w.get('id')} start {ws} 早于项目起始 {ps}")
+        if we and pe and we > pe:
+            msgs.append(f"{w.get('id')} end {we} 晚于目标完工 {pe}")
+        if ws and we and we < ws:
+            msgs.append(f"{w.get('id')} end {we} 早于 start {ws}")
+    # 依赖闭环检测
+    ids = {w.get('id') for w in wbs}
+    indeg = {w.get('id'): 0 for w in wbs}
+    for w in wbs:
+        for d in (w.get('dependsOn') or []):
+            if d in ids:
+                indeg[w['id']] += 1
+    topo, q = [], [i for i in ids if indeg[i] == 0]
+    while q:
+        n = q.pop(0); topo.append(n)
+        for w in wbs:
+            if n in (w.get('dependsOn') or []):
+                indeg[w['id']] -= 1
+                if indeg[w['id']] == 0:
+                    q.append(w['id'])
+    cyclic = [i for i in ids if i not in topo]
+    if cyclic:
+        msgs.append(f"存在循环依赖（无法基线化）：{', '.join(sorted(cyclic)[:10])}")
+    return (len(msgs) == 0), msgs
+
+
+def freeze(project_path, approve=False):
     root = os.path.dirname(os.path.abspath(project_path))
     data = load(project_path)
     proj = data.get('project', {}) or {}
+
+    # ---- P2-5 日期完整性门禁（冻结前） ----
+    ok, msgs = _date_integrity_ok(data)
+    if not ok:
+        print("✗ 基线化被拒绝：日期/依赖完整性校验未通过：")
+        for m in msgs[:20]:
+            print("  - " + m)
+        sys.exit(6)
 
     # ---- 门禁：计划须达控制级才允许基线化 ----
     chk = run([CONSISTENCY, '--project', project_path])
@@ -136,6 +197,17 @@ def freeze(project_path):
     if st.returncode != 0:
         print("[warn] project_state.py 写入指针失败，请手动设置 baseline.file", file=sys.stderr)
 
+    # ---- P1-2 硬门接线：--freeze-and-approve 时自动提升为 operational ----
+    if approve:
+        ge = run([os.path.join(HERE, 'gate_engine.py'), '--to', 'operational',
+                  '--approve', '--project', project_path])
+        if ge.returncode != 0:
+            print("⚠ 控制门未通过，lifecycle_state 保留为 baselined。请查看 gate_engine 输出。")
+            print(ge.stdout)
+            print(ge.stderr)
+        else:
+            print("✓ 控制门已通过并自动提升为 operational。可运行 control_engine.py 周期巡检。")
+
 
 def status(project_path):
     data = load(project_path)
@@ -156,10 +228,14 @@ def main():
     ap = argparse.ArgumentParser(description="PM Master 基线化")
     ap.add_argument('--project', required=True)
     ap.add_argument('--freeze', action='store_true', help="冻结基线（默认动作）")
+    ap.add_argument('--freeze-and-approve', action='store_true',
+                    help="冻结基线并通过控制门后自动提升为 operational（硬门接线）")
     ap.add_argument('--status', action='store_true', help="查看基线状态")
     a = ap.parse_args()
     if a.status:
         status(a.project)
+    elif a.freeze_and_approve:
+        freeze(a.project, approve=True)
     else:
         freeze(a.project)
 

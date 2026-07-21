@@ -92,6 +92,9 @@ def tasks_from_project(data):
             'name': w.get('name', w.get('id')),
             'duration': _parse_duration_days(w),
             'deps': _parse_deps(w.get('dependsOn')),
+            'start': w.get('start'),
+            'end': w.get('end'),
+            'children': w.get('children'),
         })
     return tasks
 
@@ -124,7 +127,7 @@ def main():
             if dep not in tasks:
                 issues.append(f"任务 {tid} 依赖未知任务 {dep}")
 
-    # 拓扑排序（Kahn）——仅统计项目内依赖；外部依赖视为已满足
+    # ---- 环检测（Kahn 拓扑排序；未排完的节点 = 存在循环依赖）----
     indeg = {tid: 0 for tid in tasks}
     for tid, ds in deps.items():
         for p in ds:
@@ -140,31 +143,83 @@ def main():
                 indeg[t] -= 1
                 if indeg[t] == 0:
                     queue.append(t)
-    if len(topo) < len(tasks):  # 存在环，补齐剩余节点避免崩溃
-        for t in tasks:
-            if t not in topo:
-                topo.append(t)
+    cyclic = [t for t in tasks if t not in topo]
+    if cyclic:
+        # 定位构成环的边（依赖指向环内节点），便于用户修复
+        cycle_edges = []
+        for t in cyclic:
+            for d in deps[t]:
+                if d in cyclic:
+                    cycle_edges.append(f"{t} → {d}")
+        issues.append("⚠ 检测到循环依赖（无法排期），请断开以下边之一："
+                      + "; ".join(cycle_edges[:12]) + ("…" if len(cycle_edges) > 12 else ""))
 
-    # 正向 ES/EF（按拓扑序；外部依赖 p∉tasks 视为已满足，不影响排期）
-    es, ef = {}, {}
-    for tid in topo:
-        dur = tasks[tid].get('duration', 0)
-        start = 0
-        for p in deps[tid]:
-            if p in ef:
-                start = max(start, ef[p])
-        es[tid], ef[tid] = start, start + dur
+    # ---- 优先使用 project.yaml 中已有的日历 start/end 计算浮动 ----
+    # 若同一行既有 deps 又有真实 start/end，以日历日期为准（尊重 build_schedule 的波次并行）；
+    # 否则退回顺序模型（duration 累加）。两种模型不可混用，避免 "项目总工期" 口径失真。
+    # 仅统计叶子任务（children 为空）的日历日期；含 children 的汇总行即使无日期也算“有”
+    leaf_tasks = [t for t in tasks if t not in cyclic and not tasks[t].get('children')]
+    have_calendar = all((tasks[t].get('start') and tasks[t].get('end')) for t in leaf_tasks)
+    cal_start = {}
+    cal_end = {}
+    for t in tasks:
+        s = tasks[t].get('start'); e = tasks[t].get('end')
+        if s and e:
+            try:
+                cal_start[t] = datetime.date.fromisoformat(str(s)[:10])
+                cal_end[t] = datetime.date.fromisoformat(str(e)[:10])
+            except (ValueError, TypeError):
+                pass
+    use_calendar = have_calendar and len(cal_start) > 0
 
-    project_end = max(ef.values()) if ef else 0
-    # 反向 LF/LS（逆拓扑序，保证后继已先算出 LS）
-    lf, ls = {}, {}
-    for tid in reversed(topo):
-        succ = [t for t in topo if tid in deps.get(t, [])]
-        if not succ:
-            lf[tid] = project_end
-        else:
-            lf[tid] = min(ls[s] for s in succ)
-        ls[tid] = lf[tid] - tasks[tid].get('duration', 0)
+    if use_calendar:
+        # 浮动 = 允许最晚完成 - 计划完成（以日历天计，非顺序天）
+        # LF 反向传播：无后继的节点 LF = 项目最晚 end；否则 LF = min(后继 LS)
+        # 先求 project 基准（最早 start 与最晚 end），用于无后继节点的 LF
+        proj_min = min(cal_start.values())
+        proj_max = max(cal_end.values())
+        # 正向：planned day 偏移（相对 proj_min）
+        def dayoff(d):
+            return (d - proj_min).days
+        es = {t: dayoff(cal_start[t]) for t in cal_start}
+        ef = {t: dayoff(cal_end[t]) for t in cal_end}
+        # 反向 LF/LS（仅在 acyclic 子图上；cyclic 节点跳过，避免崩溃）
+        lf, ls = {}, {}
+        succ_of = {t: [] for t in tasks}
+        for t in topo:
+            for d in deps[t]:
+                if d in topo:
+                    succ_of[d].append(t)
+        for tid in reversed(topo):
+            succ = succ_of.get(tid, [])
+            if not succ:
+                # 无后继：LF = 项目最晚 end 的偏移
+                lf[tid] = dayoff(proj_max)
+            else:
+                lf[tid] = min(ls[s] for s in succ)
+            ls[tid] = lf[tid] - (ef[tid] - es[tid])
+        model_label = "日历模型（尊重波次并行，start/end 来自 project.yaml）"
+        project_end = dayoff(proj_max)
+    else:
+        # 顺序模型（无日历日期时）
+        es, ef = {}, {}
+        for tid in topo:
+            dur = tasks[tid].get('duration', 0)
+            start = 0
+            for p in deps[tid]:
+                if p in ef:
+                    start = max(start, ef[p])
+            es[tid], ef[tid] = start, start + dur
+        project_end = max(ef.values()) if ef else 0
+        lf, ls = {}, {}
+        for tid in reversed(topo):
+            succ = [t for t in topo if tid in deps.get(t, [])]
+            if not succ:
+                lf[tid] = project_end
+            else:
+                lf[tid] = min(ls[s] for s in succ)
+            ls[tid] = lf[tid] - tasks[tid].get('duration', 0)
+        model_label = "顺序模型（按 duration 累加；无 start/end 时为上界估算）"
 
     print("=== 排期健康度 ===")
     if issues:
@@ -173,7 +228,8 @@ def main():
             print("  -", i)
     else:
         print("✓ 依赖完整")
-    print(f"项目总工期: {project_end} 天")
+    print(f"排期模型: {model_label}")
+    print(f"项目总工期(日历天): {project_end} 天")
     print(f"{'ID':<8}{'名称':<14}{'ES':>4}{'EF':>4}{'LS':>4}{'LF':>4}{'浮动':>6}  关键?")
     crit_path = []
     for tid in topo:
@@ -186,7 +242,11 @@ def main():
             crit_path.append(tid)
         print(f"{tid:<8}{str(tasks[tid].get('name',''))[:12]:<14}"
               f"{es[tid]:>4}{ef[tid]:>4}{ls[tid]:>4}{lf[tid]:>4}{slack:>6}   {crit}")
+    for tid in cyclic:
+        print(f"{tid:<8}{tasks[tid].get('name',''):<14}  (循环依赖，已排除在关键路径外)")
     print("关键路径:", " -> ".join(crit_path) if crit_path else "无")
+    if cyclic:
+        print("⚠ 注：存在循环依赖的节点未参与关键路径计算，修复后重新运行以获得完整结果。")
 
 
 if __name__ == '__main__':

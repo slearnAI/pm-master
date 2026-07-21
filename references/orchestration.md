@@ -1,140 +1,140 @@
-# 多 Agent 混合调度 · 编排手册
+# Multi-Agent Hybrid Dispatch · Orchestration Handbook
 
-本文件是 PM Master 的「调度大脑」。主控 Agent（即加载本技能的 PM）按此决策如何把工作
-自己做完、组队并行、或 fork 接力。
+This file is PM Master's "dispatch brain". The master Agent (the PM loading this skill) uses it to decide whether to
+do the work itself, form a team to run in parallel, or fork a relay.
 
-## 1. 分类（每次请求先做）
+## 1. Classification (do this first on every request)
 
-判定四个维度，写进 `project.yaml`（或直接用于路由）：
+Determine four dimensions and write them into `project.yaml` (or use them directly for routing):
 
-| 维度 | 取值 | 来源 |
+| Dimension | Values | Source |
 |------|------|------|
-| `type` | project / program | 用户说"项目"还是"项目群/组合" |
-| `methodology` | waterfall / agile / iteration / hybrid | 用户指定或按交付性质推断 |
-| `phase` | 启动/规划/执行/监控/收尾（项目群另有组合阶段） | 当前进展 |
-| `intent` | 规划/构建/汇报/分析/治理 | 用户要什么 |
+| `type` | project / program | whether the user says "project" or "program/portfolio" |
+| `methodology` | waterfall / agile / iteration / hybrid | user-specified or inferred from the nature of the delivery |
+| `phase` | Initiation/Planning/Execution/Monitoring/Closeout (programs also have portfolio phases) | current progress |
+| `intent` | planning/building/reporting/analysis/governance | what the user wants |
 
-## 2. 执行模式决策树
+## 2. Execution-Mode Decision Tree
 
 ```
-请求进来
+Request comes in
   │
-  ├─ 单产物 or 解释/微调 or 跑一个分析  ──►  direct（主控直做，调 render.py / evm.py 等）
+  ├─ single artifact or explanation/tweak or running one analysis  ──►  direct (master does it directly, calling render.py / evm.py etc.)
   │
-  ├─ 多「互相独立」产物（如启动需 章程+WBS+排期+风险+RACI）
-  │     且彼此无强依赖  ──►  team（TeamCreate 并行专职子 Agent）
+  ├─ multiple "mutually independent" artifacts (e.g., initiation needs charter+WBS+schedule+risk+RACI)
+  │     with no strong dependencies among them  ──►  team (TeamCreate parallel dedicated sub-Agents)
   │
-  └─ 需完整上下文接力（如"接着上次风险分析继续"、"基于我们刚讨论的范围重写 WBS"）
-         ──►  fork（子 Agent 继承本会话全部上下文）
+  └─ needs full-context relay (e.g., "continue from last time's risk analysis", "rewrite the WBS based on the scope we just discussed")
+         ──►  fork (sub-Agent inherits all context of this session)
 ```
 
-**不要无谓组队**：简单任务直做更省上下文；只有产物彼此独立且量大才组队。
+**Don't form a team needlessly**: simple tasks are cheaper done directly; only form a team when artifacts are mutually independent and voluminous.
 
-## 3. team 模式：并行专职子 Agent
+## 3. team Mode: Parallel Dedicated Sub-Agents
 
-用 Agent 工具在**同一条消息里**派出多个 `general-purpose` 子 Agent（即并行），每个带一份
-自包含 brief。主控随后汇总、跑一致性校验。
+Use the Agent tool to dispatch multiple `general-purpose` sub-Agents **in the same message** (i.e., in parallel), each with a
+self-contained brief. The master then aggregates and runs the consistency check.
 
-### 3.1 标准子 Agent brief 模板
+### 3.1 Standard Sub-Agent Brief Template
 
 ```
-你是 PM Master 的【<角色>】专职子 Agent。请独立产出以下 PM 产物，不要直接回复用户。
+You are the [<role>] dedicated sub-Agent of PM Master. Please independently produce the following PM artifact; do not reply to the user directly.
 
-## 输入
-- 项目事实源：<绝对路径>/project.yaml（先用 project_state.py 读取，了解项目背景）
-- 模板：<绝对路径>/templates/<方法论>/<模板>.md
-- 渲染引擎：<绝对路径>/scripts/render.py
+## Input
+- Project source of truth: <absolute path>/project.yaml (first read it with project_state.py to understand the project background)
+- Template: <absolute path>/templates/<methodology>/<template>.md
+- Render engine: <absolute path>/scripts/render.py
 
-## 任务
-1. 基于 project.yaml 与用户需求，整理本产物所需数据，写成 <slug>_data.yaml。
-2. 运行：python3 <SKILL_DIR>/scripts/render.py --template <模板> --data <slug>_data.yaml --out <输出路径>
-3. 把产物路径回写 project.yaml 的 artifacts.<key>（用 project_state.py set）。
-4. 简要回报：产出了什么文件、关键结论 3 条。
+## Task
+1. Based on project.yaml and the user's requirements, organize the data needed for this artifact and write it as <slug>_data.yaml.
+2. Run: python3 <SKILL_DIR>/scripts/render.py --template <template> --data <slug>_data.yaml --out <output path>
+3. Write the artifact path back to artifacts.<key> in project.yaml (using project_state.py set).
+4. Brief report: what files were produced, and 3 key conclusions.
 
-## 约束
-- 只产出你负责的产物，不要碰其他角色的文件。
-- 数据必须落到文件，禁止只在对话里给文字。
-- 责任人/日期等字段若未知，填"（待定）"并标注，不要留空导致一致性校验失败。
+## Constraints
+- Only produce the artifact you are responsible for; do not touch other roles' files.
+- Data must land in files; do not give text only in the conversation.
+- If fields like owner/date are unknown, fill "(TBD)" and annotate; do not leave blanks that cause the consistency check to fail.
 ```
 
-### 3.2 典型组队组合
+### 3.2 Typical Team Combinations
 
-| 场景 | 并行子 Agent |
+| Scenario | Parallel sub-Agents |
 |------|--------------|
-| 项目启动 | planner(WBS+排期) · risk(风险+RAID) · stakeholder(RACI+沟通) |
-| 敏捷启动 | planner(产品Backlog) · risk(风险+RAID) · stakeholder(干系人+RACI) |
-| 阶段评审 | reporter(状态报告) · risk(风险更新) · scheduler(排期更新) |
-| 项目群启动 | program(组合章程+看板) · risk(组合风险) · dependency(依赖图) |
-| **operational 双轨（P2+P3 并行）** | **执行轨** domain-expert(叶子包/增量) · **监控轨** monitoring-agent(control_engine 周期巡检+状态报告+RAID 滚动+升级回流) |
+| Project initiation | planner(WBS+schedule) · risk(risk+RAID) · stakeholder(RACI+communication) |
+| Agile initiation | planner(product Backlog) · risk(risk+RAID) · stakeholder(stakeholders+RACI) |
+| Phase review | reporter(status report) · risk(risk update) · scheduler(schedule update) |
+| Program initiation | program(portfolio charter+dashboard) · risk(portfolio risk) · dependency(dependency map) |
+| **operational dual-track (P2+P3 parallel)** | **execution track** domain-expert(leaf packages/increments) · **monitoring track** monitoring-agent(control_engine periodic inspection + status report + RAID rolling + escalation flow-back) |
 
-## 3.3 第二层：领域专家调度（Expert Dispatch）
+## 3.3 Layer 2: Domain Expert Dispatch (Expert Dispatch)
 
-第一层（PM-generalist）只产 PM 治理产物；**技术工作包必须由对应领域专家产出**，否则 WBS 会停在
-SOW 级粗粒度。这是本技能"多 Agent"的真正含义——按活动的**领域/产品/任务**调度专家。
+Layer 1 (PM-generalist) only produces PM governance artifacts; **technical work packages must be produced by the corresponding domain experts**, otherwise the WBS stays at
+SOW-level coarse granularity. This is the true meaning of this skill's "multi-Agent"—dispatching experts by the activity's **domain/product/task**.
 
-**流程（规划阶段）：**
-1. 初稿 WBS 为 SOW 级 summary 包，标 `domain`（如 `data-modelling`、`migration`、`masking`）。
-2. 运行 `python3 scripts/dispatch.py --project <项目>/project.yaml` 生成**调度计划**：
-   自动标出缺 `role` 标签的领域活动、以及 `estimate` 超阈值需拆解的包，并特化推荐专家名。
-3. 对每个待调度包，派出领域专家子 Agent（用 `references/expert-roles.md` 对应角色的 `system_prompt`，
-   代入 `project.domain`/`product`），或路由至 **WorkBuddy 专家中心**已安装的对应**专家**会话。
-4. 专家子 Agent 把包拆成叶子工作包（≤ `control.granularity_threshold` 人天，默认 10），
-   写回 `project.yaml` 的 `wbs`（ID 前缀 `<包ID>.x`），含 交付物/role/owner/estimate/DoD/依赖。
-5. 主控重新渲染 `wbs.md` → 跑 `consistency_check.py`（新门禁校验 role 标签 + 颗粒度）→ 未过则退回专家续拆。
+**Flow (planning phase):**
+1. Draft the WBS as SOW-level summary packages, tagged with `domain` (e.g., `data-modelling`, `migration`, `masking`).
+2. Run `python3 scripts/dispatch.py --project <project>/project.yaml` to generate the **dispatch plan**:
+   it automatically flags domain activities missing a `role` tag and packages whose `estimate` exceeds the threshold and need decomposition, and specializes the recommended expert names.
+3. For each package to be dispatched, send out a domain expert sub-Agent (using the `system_prompt` of the corresponding role in `references/expert-roles.md`,
+   substituting `project.domain`/`product`), or route to an installed corresponding **expert** session in the **WorkBuddy Expert Center**.
+4. The expert sub-Agent decomposes the package into leaf work packages (≤ `control.granularity_threshold` person-days, default 10),
+   writing them back to `wbs` in `project.yaml` (ID prefix `<package ID>.x`), with deliverable/role/owner/estimate/DoD/dependencies.
+5. The master re-renders `wbs.md` → runs `consistency_check.py` (new gate validates role tags + granularity) → if not passed, returns to the expert to keep decomposing.
 
-**角色路由与特化**：见 `references/activity-expert-map.md`（活动关键词 → 角色；domain/product → 专家特化名）。
-**专家 prompt 库**：见 `references/expert-roles.md`（13 个领域角色 + 通用 PM 角色）。
+**Role routing and specialization**: see `references/activity-expert-map.md` (activity keywords → role; domain/product → expert specialized name).
+**Expert prompt library**: see `references/expert-roles.md` (13 domain roles + generic PM roles).
 
-> 经验团队的 WBS 不是 10 个 SOW 包，而是数百个叶子包——这是靠领域专家逐域拆解出来的，
-> 而非 PM-generalist 一个人拍脑袋。本第二层就是把这个纪律固化进工作流与质量门。
+> An experienced team's WBS is not 10 SOW packages but hundreds of leaf packages—these come from domain experts decomposing domain by domain,
+> not from a PM-generalist guessing alone. This layer 2 solidifies that discipline into the workflow and quality gates.
 
-## 3.4 operational 双轨：P2 执行轨 + P3 监控轨并行
+## 3.4 operational Dual-Track: P2 Execution Track + P3 Monitoring Track in Parallel
 
-进入 `operational`（G1→2 控制门之后，waterfall/hybrid 已 `baseline.py --freeze`），**执行与监控并非串行，
-而是同处 `operational` 的两条并行 Agent 轨道**（详见 `references/lifecycle.md §5.3` 与 `references/phases/p2-execution.md`、`p3-monitoring.md`）。
-主控在一次 TeamCreate 消息里**同时派出两轨**，让"做"与"盯"并发：
+After entering `operational` (past the G1→2 control gate, waterfall/hybrid already `baseline.py --freeze`), **execution and monitoring are not serial
+but two parallel Agent tracks both within `operational`** (see `references/lifecycle.md §5.3` and `references/phases/p2-execution.md`, `p3-monitoring.md`).
+The master **dispatches both tracks simultaneously** in one TeamCreate message, so "doing" and "watching" run concurrently:
 
-- **Track A · 执行轨（P2）**：领域专家子 Agent（经 `dispatch.py` 调度的 `expert-roles.md` 角色）持续产出叶子工作包/增量，
-  写 `actuals` / `wbs_progress` / 交付物，走变更控制（CCB）。
-- **Track B · 监控轨（P3）**：专职 `monitoring-agent` 按 `control.cadence` 周期跑 `control_engine.py`，产出 `status_report` /
-  `control_report`，滚动 `risk_register` / `raid_log` / `milestone_list`，对 RED 升级项**回流主控**。
+- **Track A · Execution track (P2)**: domain expert sub-Agents (`expert-roles.md` roles dispatched via `dispatch.py`) continuously produce leaf work packages/increments,
+  writing `actuals` / `wbs_progress` / deliverables, going through change control (CCB).
+- **Track B · Monitoring track (P3)**: a dedicated `monitoring-agent` periodically runs `control_engine.py` on the `control.cadence` cycle, producing `status_report` /
+  `control_report`, rolling `risk_register` / `raid_log` / `milestone_list`, and **flowing RED escalation items back to the master**.
 
-**共享事实源、字段零冲突**（这正是能并行而无锁的关键）：
+**Shared source of truth, zero field conflict** (this is the key to parallelism without locks):
 
-| 轨道 | 读 | 写 | 不碰 |
+| Track | Reads | Writes | Does not touch |
 |------|----|----|------|
-| 执行轨 | `project.yaml`、`baselines/`、计划 | `wbs_progress` / `actuals` / 交付物 / `raid.issues[]`（纠偏） | 控制报告、状态报告 |
-| 监控轨 | `baselines/`、`actuals`、`raid` | `control_report` / `status_report` / `raid.risks[]` 滚动 | 交付物本身 |
+| Execution track | `project.yaml`, `baselines/`, plans | `wbs_progress` / `actuals` / deliverables / `raid.issues[]` (corrections) | control reports, status reports |
+| Monitoring track | `baselines/`, `actuals`, `raid` | `control_report` / `status_report` / `raid.risks[]` rolling | the deliverables themselves |
 
-**闭环**：监控轨发现偏差/RED → 回报主控 → 主控把纠偏动作路由回执行轨（追加工作包或变更）→ 执行轨更新 `actuals` → 监控轨下一周期复核。
-G2→3 软门（PM 标记监控节奏）是进入双轨的显式动作；G3→4 收尾门在双轨都满足出口准则后翻 `closed`。
+**Closed loop**: the monitoring track finds a variance/RED → reports back to the master → the master routes the corrective action back to the execution track (appending work packages or changes) → the execution track updates `actuals` → the monitoring track re-checks in the next cycle.
+The G2→3 soft gate (PM marks the monitoring cadence) is the explicit action to enter dual-track; the G3→4 closeout gate flips to `closed` after both tracks meet the exit criteria.
 
-> 沟通是 operational 期间的高频活动：状态报告/里程碑/风险升级等正式通知，由 `communication-agent`
-> 基于 `communication.contacts[]` 起草并经 `comm_send.py` 审批门外发（见 `references/agents.md §8`、`scripts/comm_send.py`）。
+> Communication is a high-frequency activity during operational: formal notifications such as status reports/milestones/risk escalations are drafted by the `communication-agent`
+> based on `communication.contacts[]` and sent through the `comm_send.py` approval gate (see `references/agents.md §8`, `scripts/comm_send.py`).
 
-## 4. fork 模式：上下文接力
+## 4. fork Mode: Context Relay
 
-当用户要求"接着做""基于前文"等强依赖任务时，用 Agent 工具以 `subagent_type="fork"` 派出子 Agent，
-它会继承本会话全部上下文，适合需要长链条推理的深度任务（如风险情景推演、WBS 逐层拆解）。
+When the user asks for "continue" / "based on the previous" and similar strongly-dependent tasks, use the Agent tool with `subagent_type="fork"` to dispatch a sub-Agent;
+it inherits all context of this session, suitable for deep tasks requiring long-chain reasoning (e.g., risk scenario simulation, layer-by-layer WBS decomposition).
 
-## 5. 聚合与质量门
+## 5. Aggregation and Quality Gate
 
-1. 收集各子 Agent 回报，确认产物文件均已生成。
-2. 主控运行一致性校验：
+1. Collect each sub-Agent's report and confirm all artifact files are generated.
+2. The master runs the consistency check:
    ```bash
-   python3 <SKILL_DIR>/scripts/consistency_check.py --project <项目>/project.yaml
+   python3 <SKILL_DIR>/scripts/consistency_check.py --project <project>/project.yaml
    ```
-3. 有问题时，把问题清单交给对应子 Agent 修复，或主控直接修；通过后再交付。
-4. 交付：更新 `project.yaml.artifacts`，按需 `render_docx.py` 渲染正式文档，向用户给产物清单 + 指标卡。
+3. When there are issues, hand the issue list to the corresponding sub-Agent to fix, or the master fixes directly; deliver after passing.
+4. Delivery: update `project.yaml.artifacts`, render the formal document with `render_docx.py` as needed, and give the user the artifact list + metrics card.
 
-## 6. 示例（敏捷项目启动）
+## 6. Example (Agile Project Initiation)
 
-用户："用敏捷帮我启动『支付重构』项目"
+User: "Use agile to help me kick off the 'Payment Refactor' project"
 
-1. `init_project.py "支付重构" --type project --methodology agile --framework scrum`
-2. 分类 → {project, agile, 启动, 构建} → team 模式
-3. 同消息并行派出：
+1. `init_project.py "Payment Refactor" --type project --methodology agile --framework scrum`
+2. Classify → {project, agile, Initiation, building} → team mode
+3. Dispatch in parallel in the same message:
    - planner-agent → `templates/agile/product_backlog.md`
    - risk-agent → `templates/common/risk_register.md` + `templates/common/raid_log.md`
    - stakeholder-agent → `templates/common/stakeholder_register.md` + `templates/common/raci.md`
-4. 汇总 → `consistency_check.py` → `render_docx.py` 渲染 → 交付清单。
+4. Aggregate → `consistency_check.py` → render with `render_docx.py` → delivery list.

@@ -49,13 +49,26 @@ def _save(path, data):
         yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
 
 
+def _as_list(v):
+    """将字符串/列表统一为列表，便于模板 {{#each}} 渲染。"""
+    if v is None:
+        return None
+    if isinstance(v, list):
+        return v
+    return [v]
+
+
 def _identify_sow_packages(wbs):
-    """返回 SOW 级包的 id 列表。"""
+    """返回 SOW 级包的 id 列表。
+
+    仅项目群层(tier=program)的汇总包算作独立 SOW，避免把组件层 phase 汇总包
+    （如 SOW1.1 阶段组）误判为独立 SOW 而重复开启动会。
+    """
     explicit = [w.get('id') for w in wbs
-                if w.get('summary') and w.get('tier') != 'program' and w.get('id')]
+                if w.get('summary') and w.get('tier') == 'program' and w.get('id')]
     if explicit:
         return explicit
-    # 兜底：顶层包且有子包
+    # 兜底：顶层包且有子包（且为 program 层）
     ids = [w.get('id') for w in wbs if w.get('id')]
     sows = []
     for w in wbs:
@@ -63,7 +76,7 @@ def _identify_sow_packages(wbs):
         if not wid or '.' in wid:
             continue
         has_child = any(i != wid and i.startswith(wid + '.') for i in ids)
-        if has_child:
+        if w.get('tier') == 'program' and has_child:
             sows.append(wid)
     return sows
 
@@ -130,8 +143,8 @@ def main():
                 'name': sow.get('name', sow_id),
                 'domain': sow.get('domain') or '（待定）',
                 'owner': sow.get('owner') or '（待定）',
-                'objective': sow.get('deliverable') or sow.get('name', sow_id),
-                'scope': sow.get('deliverable') or '（待定）',
+                'objective': sow.get('objective') or sow.get('deliverable') or sow.get('name', sow_id),
+                'scope': sow.get('scope') or sow.get('deliverable') or '（待定）',
             },
             'deliverables': deliverables,
             'experts': experts,
@@ -139,7 +152,7 @@ def main():
             'kickoff_date': kickoff_date,
             'decisions': sow.get('kickoff_decisions')
                 or [{'id': 1, 'item': '确认范围与交付物', 'conclusion': '（待定）'}],
-            'assumptions': sow.get('assumptions') or ['（待定）'],
+            'assumptions': _as_list(sow.get('assumptions')) or ['（待定）'],
             'next_actions': sow.get('next_actions')
                 or [{'action': '拆解并派发叶子工作包', 'owner': sow.get('owner') or '（待定）', 'due': '（待定）'}],
             'artifacts': sow.get('artifacts') or ['（待定）'],

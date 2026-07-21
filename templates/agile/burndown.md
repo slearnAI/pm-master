@@ -1,27 +1,27 @@
-# Sprint 燃尽图 · {{ project.name }}
+# Sprint Burndown Chart · {{ project.name }}
 
-> 对比实际剩余工作量与理想燃尽线，判断 Sprint 进度健康度。
+> Compare actual remaining work against the ideal burndown line to assess Sprint progress health.
 
-- **Sprint 编号**：{{ sprint.num }}
+- **Sprint Number**: {{ sprint.num }}
 
-## 燃尽数据
-| 日期/天 | 剩余工作量 | 理想燃尽 |
+## Burndown Data
+| Date/Day | Remaining Work | Ideal Burndown |
 |---------|-----------|----------|
 {{#each burndown}}
 | {{this.day}} | {{this.remaining}} | {{this.ideal}} |
 {{/each}}
 
-## 燃尽图
+## Burndown Chart
 
 ```mermaid
 xychart-beta
-    title "Sprint {{ sprint.num }} 燃尽图"
-    x-axis "天" [{{ join(burndown, ", ", "day") }}]
-    y-axis "剩余工作量" 0 --> {{ burndown.[0].remaining }}
+    title "Sprint {{ sprint.num }} Burndown Chart"
+    x-axis "Day" [{{ join(burndown, ", ", "day") }}]
+    y-axis "Remaining Work" 0 --> {{ burndown.[0].remaining }}
     line [{{ join(burndown, ", ", "remaining") }}]
     line [{{ join(burndown, ", ", "ideal") }}]
 ```
 
-> 判读：实际线持续高于理想线 → 进度滞后；贴近或低于 → 进度健康。
+> Interpretation: if the actual line stays consistently above the ideal line → progress is lagging; if it tracks close to or below → progress is healthy.
 
-> 提示：估算单位需与 Sprint 计划保持一致（如故事点或人天）。
+> Tip: the estimation unit must be consistent with the Sprint plan (e.g. story points or person-days).

@@ -34,6 +34,19 @@ except ImportError:
     yaml = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def load_config():
+    """读取安装期 config.yaml（operational_control / quality_gate 等旋钮）。"""
+    for cand in (os.path.join(HERE, '..', 'config.yaml'),
+                 os.path.join(HERE, 'config.yaml')):
+        if os.path.exists(cand):
+            try:
+                with open(cand, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f) or {}
+            except Exception:
+                return {}
+    return {}
 RENDER = os.path.join(HERE, 'render.py')
 CONSISTENCY = os.path.join(HERE, 'consistency_check.py')
 
@@ -187,27 +200,118 @@ def compute(data, bdata, as_of):
         escalations.append('schedule_slip')
 
     # ---------- 2. 成本 EVM ----------
-    pv = bac * overall_planned / 100.0 if bac else 0.0
-    ev = float(ev_reported) if isinstance(ev_reported, (int, float)) else (bac * overall_actual / 100.0 if bac else 0.0)
-    ac_v = float(ac) if isinstance(ac, (int, float)) else 0.0
-    spi = (ev / pv) if pv > 0 else 1.0
-    cpi = (ev / ac_v) if ac_v > 0 else 1.0
-    eac = (bac / cpi) if cpi > 0 else bac
-    etc = max(eac - ac_v, 0.0)
-    vac = bac - eac
-    evm_status = 'GREEN'
-    if cpi < cpi_warn or spi < spi_warn:
-        evm_status = 'RED'
-    elif cpi < 1.0 or spi < 1.0:
-        evm_status = 'AMBER'
-    evm_detail = (f"SPI={spi:.2f} CPI={cpi:.2f} | PV={pv:.1f} EV={ev:.1f} AC={ac_v:.1f} | "
-                  f"EAC={eac:.1f} ETC={etc:.1f} VAC={vac:.1f} (BAC={bac:.1f})")
+    # 统一 EVM 货币基准：PV/EV/AC 必须同口径。本引擎以 BAC(货币) 为唯一基准，
+    # 不再引用 metrics.evm.pv（历史存的是人天，已废弃）。
+    # 固定费率(fixed-fee)工作：EV 应以「计费里程碑达成(billing milestone done)」计量，
+    # 而非物理完成%——在首个计费里程碑确认前，物理% 会系统性低估 EV，CPI 不宜判红。
+    proj_start = parse_date((data.get('project') or {}).get('start_date'))
+    pre_start = bool(proj_start and as_of < proj_start)
+
+    # 计费里程碑（固定费率）及其完成状态（来自 actuals.milestone_status 或 wbs_progress 的里程碑行）
+    def _milestone_done(mid):
+        ms = (actuals.get('milestone_status') or {}) if isinstance(actuals, dict) else {}
+        st = ms.get(mid)
+        if st in ('done', 'complete', 'signed-off', 'signed_off', 100):
+            return True
+        wp = wbs_progress.get(mid) if isinstance(wbs_progress, dict) else None
+        try:
+            return float(wp or 0) >= 100
+        except (TypeError, ValueError):
+            return False
+
+    fixed_milestones = []
+    for w in (bdata.get('wbs') or []):
+        b = w.get('billing') or {}
+        fee = b.get('fee_inr') or b.get('fee')
+        if w.get('milestone') and b.get('fee_type') == 'fixed' and fee:
+            try:
+                fixed_milestones.append((w.get('id'), float(fee)))
+            except (TypeError, ValueError):
+                pass
+    evm_method = 'physical'
+    ev_fixed = 0.0
+    pv_fixed = 0.0
+    if fixed_milestones:
+        evm_method = 'milestone'
+        for mid, fee in fixed_milestones:
+            if _milestone_done(mid):
+                ev_fixed += fee
+            # PV(固定费率): 里程碑计划完成（as_of 已过其 end）即计入计划值
+            s = parse_date(({w.get('id'): w for w in (bdata.get('wbs') or [])}.get(mid) or {}).get('end'))
+            if s and as_of >= s:
+                pv_fixed += fee
+
+    if pre_start:
+        # 基线起始前不应产生挣值；PV=EV=AC=0，EVM 置 N/A，不误报 SPI=1.0
+        pv = ev = ac_v = 0.0
+        spi = cpi = 1.0
+        eac = etc = vac = 0.0
+        evm_status = 'N/A'
+        evm_detail = (f"EVM 不适用：as_of {as_of.isoformat()} 早于项目起始 {proj_start.isoformat()}"
+                      f"；基线起始前不产生挣值（PV=EV=AC=0）。")
+    else:
+        if evm_method == 'milestone':
+            # 固定费率部分用里程碑计量；非固定(BAC - 固定总额)部分用物理% 计量
+            fixed_total = sum(f for _, f in fixed_milestones)
+            tm_base = max(bac - fixed_total, 0.0)
+            ev_tm = tm_base * overall_actual / 100.0 if tm_base else 0.0
+            pv_tm = tm_base * overall_planned / 100.0 if tm_base else 0.0
+            ev = ev_fixed + ev_tm
+            pv = pv_fixed + pv_tm
+            ac_v = float(ac) if isinstance(ac, (int, float)) else 0.0
+            # 首个计费里程碑确认前，CPI 用物理% 估算，仅作 AMBER 提示，不判红升级
+            if ev_fixed <= 0 and ac_v > 0:
+                cpi = (ev / ac_v) if ac_v > 0 else 1.0
+                spi = (ev / pv) if pv > 0 else 1.0
+                eac = etc = vac = 0.0  # 计费里程碑未确认前不推算 EAC/VAC（避免误报偏差）
+                evm_status = 'AMBER'
+                evm_detail = (f"SPI={spi:.2f} CPI={cpi:.2f}（估算，首个计费里程碑未确认前用物理%）| "
+                              f"PV={pv:.1f} EV={ev:.1f} AC={ac_v:.1f} | 固定费率 BAC={fixed_total:.0f} 已确认 EV={ev_fixed:.0f}"
+                              f"\n  ⚠ 注意：固定费率 SOW 在首个 Wave Design Document 签署确认前，CPI 不具真实超支含义，"
+                              f"请勿据此上报 EAC/VAC 偏差。")
+                # 不 append 'cpi' 升级（避免误报 RED）
+                if spi < spi_warn:
+                    escalations.append('spi')
+            else:
+                cpi = (ev / ac_v) if ac_v > 0 else 1.0
+                spi = (ev / pv) if pv > 0 else 1.0
+                eac = (bac / cpi) if cpi > 0 else bac
+                etc = max(eac - ac_v, 0.0)
+                vac = bac - eac
+                evm_status = 'GREEN'
+                if cpi < cpi_warn or spi < spi_warn:
+                    evm_status = 'RED'
+                elif cpi < 1.0 or spi < 1.0:
+                    evm_status = 'AMBER'
+                evm_detail = (f"SPI={spi:.2f} CPI={cpi:.2f}（里程碑计量）| PV={pv:.1f} EV={ev:.1f} AC={ac_v:.1f} | "
+                              f"EAC={eac:.1f} ETC={etc:.1f} VAC={vac:.1f} (BAC={bac:.1f}) | 已确认固定费率 EV={ev_fixed:.0f}")
+                if cpi < cpi_warn:
+                    escalations.append('cpi')
+                if spi < spi_warn:
+                    escalations.append('spi')
+        else:
+            pv = bac * overall_planned / 100.0 if bac else 0.0
+            ev = float(ev_reported) if isinstance(ev_reported, (int, float)) else (bac * overall_actual / 100.0 if bac else 0.0)
+            ac_v = float(ac) if isinstance(ac, (int, float)) else 0.0
+            spi = (ev / pv) if pv > 0 else 1.0
+            cpi = (ev / ac_v) if ac_v > 0 else 1.0
+            eac = (bac / cpi) if cpi > 0 else bac
+            etc = max(eac - ac_v, 0.0)
+            vac = bac - eac
+            evm_status = 'GREEN'
+            if cpi < cpi_warn or spi < spi_warn:
+                evm_status = 'RED'
+            elif cpi < 1.0 or spi < 1.0:
+                evm_status = 'AMBER'
+            evm_detail = (f"SPI={spi:.2f} CPI={cpi:.2f} | PV={pv:.1f} EV={ev:.1f} AC={ac_v:.1f} | "
+                          f"EAC={eac:.1f} ETC={etc:.1f} VAC={vac:.1f} (BAC={bac:.1f})")
+            if cpi < cpi_warn:
+                escalations.append('cpi')
+            if spi < spi_warn:
+                escalations.append('spi')
+
     controls.append({'name': '成本/挣值 EVM', 'status': evm_status,
                      'detail': evm_detail, 'key': 'evm'})
-    if cpi < cpi_warn:
-        escalations.append('cpi')
-    if spi < spi_warn:
-        escalations.append('spi')
 
     # ---------- 3. 风险漂移 Risk ----------
     bl_risks = {r.get('id'): r for r in (bdata.get('risks') or [])}
@@ -234,7 +338,25 @@ def compute(data, bdata, as_of):
         escalations.append('new_red_risk' if any('新增' in m for m in risk_msgs) else 'risk_upgrade')
 
     # ---------- 4. 里程碑 Milestone ----------
-    ms = data.get('milestones') or bdata.get('milestones') or []
+    # 里程碑来源：优先用顶层 milestones[]，否则从 wbs 的 milestone 包派生（SKILL 单一事实源）。
+    ms_top = data.get('milestones') or bdata.get('milestones') or []
+    if not ms_top:
+        wbs_all = (data.get('wbs') or []) + (bdata.get('wbs') or [])
+        seen = set()
+        for w in wbs_all:
+            if w.get('milestone') and w.get('id') not in seen:
+                seen.add(w.get('id'))
+                wp = (wbs_progress.get(w.get('id')) if isinstance(wbs_progress, dict) else None)
+                try:
+                    done = float(wp or 0) >= 100
+                except (TypeError, ValueError):
+                    done = False
+                ms_top.append({
+                    'id': w.get('id'), 'name': w.get('name'),
+                    'date': w.get('start') or w.get('end'),
+                    'status': 'done' if done else (w.get('status') or 'open'),
+                })
+    ms = ms_top
     ms_overdue = []
     for m in ms:
         d = parse_date(m.get('date'))
@@ -321,7 +443,7 @@ def compute(data, bdata, as_of):
             r['variance'] = None
         escalations = [e for e in escalations if e not in ('schedule_slip', 'cpi', 'spi')]
 
-    order = {'GREEN': 0, 'AMBER': 1, 'RED': 2}
+    order = {'GREEN': 0, 'AMBER': 1, 'RED': 2, 'N/A': 0}
     overall = 'GREEN'
     for c in controls:
         if order[c['status']] > order[overall]:
@@ -350,6 +472,8 @@ def main():
     ap.add_argument('--project', required=True)
     ap.add_argument('--as-of', default=None, help="巡检基准日 ISO，默认今天")
     ap.add_argument('--json', action='store_true', help="仅输出 JSON")
+    ap.add_argument('--call-evm', action='store_true',
+                    help="P1-3: 用 evm.py.compute 交叉校验 EVM 数值（独立模块复用）")
     a = ap.parse_args()
     project_path_global = os.path.abspath(a.project)
     data = load(project_path_global)
@@ -368,7 +492,55 @@ def main():
     as_of = (parse_date((data.get('actuals') or {}).get('as_of'))
              or parse_date(a.as_of) or datetime.date.today())
 
+    # 配置化阈值（M3）：把安装期 config.operational_control 注入 data.control.thresholds，
+    # compute() 会优先读取；项目级 control.thresholds 可进一步覆盖（收紧优先）。
+    cfg = load_config() if 'load_config' in globals() else {}
+    oc = (cfg.get('operational_control') or {}) if isinstance(cfg, dict) else {}
+    if isinstance(oc, dict) and oc:
+        ctrl = data.setdefault('control', {})
+        cthr = ctrl.setdefault('thresholds', {})
+        for k in ('spi_warn', 'cpi_warn', 'schedule_slip_warn_pct', 'open_change_high'):
+            if k in oc and k not in cthr:
+                try:
+                    cthr[k] = float(oc[k])
+                except (ValueError, TypeError):
+                    pass
+
     result = compute(data, bdata, as_of)
+
+    # ---- OAG：运营期交付物护栏（交付物漂移检测） ----
+    oag_violation = False
+    try:
+        if HERE not in sys.path:
+            sys.path.insert(0, HERE)
+        from artifact_guard import check_artifacts as _chk_art
+        _ok, _viol, _ = _chk_art(project_path_global, data)
+        if _ok:
+            result['controls'].append({'name': '交付物漂移 (OAG)',
+                                       'status': 'OK',
+                                       'detail': '全部交付物与事实源一致'})
+        else:
+            _msg = '；'.join(_viol[:3]) + (' …' if len(_viol) > 3 else '')
+            result['controls'].append({'name': '交付物漂移 (OAG)',
+                                       'status': 'RED',
+                                       'detail': f'{len(_viol)} 项交付物未随事实源刷新：{_msg}'})
+            result.setdefault('escalations', []).append('交付物护栏违规(OAG)')
+            oag_violation = True
+    except Exception as _e:
+        print(f"[OAG] 检查跳过: {_e}")
+
+    # ---- P1-3: 用 evm.py 交叉校验 EVM 数值 ----
+    if a.call_evm:
+        try:
+            import importlib.util as _ilu
+            esp = os.path.join(HERE, 'evm.py')
+            spec = _ilu.spec_from_file_location('evm_mod', esp)
+            evm_mod = _ilu.module_from_spec(spec); spec.loader.exec_module(evm_mod)
+            m = result.get('metrics') or {}
+            cross = evm_mod.compute(m.get('pv', 0), m.get('ev', 0), m.get('ac', 0), m.get('bac', 0))
+            print("[call-evm] evm.py 交叉校验:", json.dumps(cross, ensure_ascii=False))
+        except Exception as _e:
+            print(f"[call-evm] 校验跳过: {_e}")
 
     out_root = os.path.dirname(project_path_global)
     arts = data.get('artifacts', {}) or {}
@@ -405,8 +577,14 @@ def main():
         if result['escalations']:
             print(f"⚠ 升级项: {', '.join(result['escalations'])}")
         print(f"报告已渲染: {crep}")
-    # 退出码：任一 RED 升级 → 1（可挂定时任务告警）
-    sys.exit(1 if result['overall_status'] == 'RED' else 0)
+    # 巡检落盘时间戳（E4：避免重复巡检）
+    data['last_control_check'] = as_of.isoformat() if hasattr(as_of, 'isoformat') else str(as_of)
+    # 同步回 control 块，便于向后兼容
+    (data.setdefault('control', {}))['last_control_check'] = data['last_control_check']
+    with open(project_path_global, 'w', encoding='utf-8') as f:
+        yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
+    # 退出码：任一 RED 升级 或 交付物护栏违规 → 1（可挂定时任务告警）
+    sys.exit(1 if (result['overall_status'] == 'RED' or oag_violation) else 0)
 
 
 if __name__ == '__main__':
