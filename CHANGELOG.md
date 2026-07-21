@@ -5,7 +5,7 @@
 ### 机密性评审穿透化 · 新增 `confidentiality_check.py`（发布前必跑）
 - **背景**：用户指出机密性评审不能「仅限路径」，必须覆盖「所有文件的内容（scripts / examples / 任意文件，含二进制）」。
   早期评审只扫文本，漏掉了编译缓存 `__pycache__/*.pyc`——其字节码内嵌 `co_filename` 绝对路径
-  （如 `/Users/wanman/.qclaw/workspace/...` 或 `/Users/wanman/.workbuddy/...`），会泄露本机用户名/历史工作区。
+  （如 `/Users/<user>/...` 或历史工作区路径），会泄露本机用户名/历史工作区。
 - **新增 `scripts/confidentiality_check.py`**：递归穿透扫描整个 skill 包。
   - 文本文件按行匹配；**二进制（.pyc 等）按字节级扫描**，可抓到内嵌绝对路径；
   - HIGH 令牌（命中即泄露，exit 1）：`LIC` / `Teradata` / `Vertica` / `Vantage` / `FSAS` / `lic-datalake` /

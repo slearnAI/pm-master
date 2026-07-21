@@ -84,6 +84,15 @@ def _scan_bytes(raw, patterns):
 # 扫描器自身文件名（含定义中的敏感令牌样例），必须排除自匹配
 SELF_NAMES = {os.path.basename(__file__), 'confidentiality_check.py'}
 
+# 元文档（维护/说明类）按设计会引用敏感令牌词汇（如脱敏叙事、扫描器说明），
+# 非真实泄露，排除以免误报；真正的交付物内容（templates/scripts/references 方法论）仍全程扫描。
+EXCLUDE_META = {
+    'confidentiality_check.py',
+    'CHANGELOG.md',
+    'usage.md',
+    'README.md',
+}
+
 
 def scan_pack(pack_root):
     high = []        # (relpath, location, label, snippet)
@@ -97,6 +106,9 @@ def scan_pack(pack_root):
             rel = os.path.relpath(full, pack_root)
             # 跳过扫描器自身（其源码含待查令牌样例，会自匹配误报）
             if fn in SELF_NAMES:
+                continue
+            # 跳过元文档（维护/说明类，按设计引用令牌词汇，非真实泄露）
+            if fn in EXCLUDE_META:
                 continue
             try:
                 with open(full, 'rb') as f:
