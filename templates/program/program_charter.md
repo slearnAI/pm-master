@@ -12,13 +12,13 @@
 | Domain | {{ program.domain }} |
 
 ### Program Architecture (mermaid)
-> SOW delivery structure: each SOW attaches to the Core/Semantic layer. Note: mermaid forbids an edge from a node to its own enclosing subgraph, so SOW6/SOW7 now point to CORE/LIC instead of self-referencing DELIVERY.
+> SOW delivery structure: each SOW attaches to the Core/Semantic layer. Note: mermaid forbids an edge from a node to its own enclosing subgraph, so SOW6/SOW7 now point to CORE/CLIENT instead of self-referencing DELIVERY.
 
 ```mermaid
 graph TD
-  LIC[LIC Business & Compliance Stakeholders] --> SEM[Semantic Layer]
-  SEM --> CORE[Core Layer - Teradata]
-  CORE --> SRC[Source Systems - Vertica et al.]
+  CLIENT[Client Business & Compliance Stakeholders] --> SEM[Semantic Layer]
+  SEM --> CORE[Core Layer - MPP 数仓]
+  CORE --> SRC[Source Systems - 示例源系统 et al.]
   subgraph DELIVERY[SOW Delivery]
     S1[SOW1 Modelling] --> CORE
     S2[SOW2 Migration] --> CORE
@@ -27,7 +27,7 @@ graph TD
     S5[SOW5 BCM] --> CORE
     S6[SOW6 SME] --> CORE
     S9[SOW9 Install / TS] --> CORE
-    S8[SOW8 Training] --> LIC
+    S8[SOW8 Training] --> CLIENT
     S7[SOW7 PMO]
   end
 ```

@@ -154,4 +154,4 @@ python3 parse_sow.py --project program/project.yaml --spec sow1.spec.json --dry-
   - **6d-1 里程碑覆盖缺口**：任一叶子既无 `milestone_ref`、其依赖末端也不落在任何里程碑 → 致命。
   - **6d-2 支付↔里程碑缺失**：`sow_map`/`program.sows` 中任一固定费率支付行（fee>0），其 SOW 子树内却无 `milestone + billing.fee_type=fixed` 包 → 致命。
   - **6d-3 支付顺序非单调**：同一 SOW 的计费里程碑排期日须升序（付款节奏与交付节奏同向）→ 否则致命。
-- 运营期（已冻结，如 LIC）自动跳过 6d，避免击穿已基线化项目。
+- 运营期（已冻结，如示例客户）自动跳过 6d，避免击穿已基线化项目。

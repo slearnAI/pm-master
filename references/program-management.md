@@ -109,10 +109,10 @@ When parsing a SOW, the comprehension step is NOT optional — apply a chain-of-
 2. **Map each billing milestone to a wave / workstream** in the SOW's scope section. Model each wave as a `summary` package containing its own source-analysis → logical-model → physical-model+DDL → S2T-mapping leaf buckets, ending in that wave's sign-off milestone.
 3. **Sequence billing milestones** along the commercial cadence (sequential per-sign-off is the safe default for a single architecture team; overlap only if the SOW explicitly allows parallel source sets + SME availability for the whole project).
 4. **Non-billing deliverables** (e.g. a design document with no separate fee) are still deliverable milestones, but flag `fee_inr: 0` + `note: 交付物但非独立计费事件` so they aren't mistaken for revenue events.
-5. **Every leaf package ≤ 10 人天** (the control gate hard-fails otherwise): split logical/physical/S2T activities into ≤10-day expert buckets (e.g. `W1.2a` FSDM, `W1.2b` FSAS, `W1.3a` Core DDL, `W1.3b` Semantic DDL). Summary/milestone packages get a rolled-up `estimate` = sum of children; milestones carry a small positive sign-off effort.
+5. **Every leaf package ≤ 10 人天** (the control gate hard-fails otherwise): split logical/physical/S2T activities into ≤10-day expert buckets (e.g. `W1.2a` FSDM, `W1.2b` 客户系统A, `W1.3a` Core DDL, `W1.3b` Semantic DDL). Summary/milestone packages get a rolled-up `estimate` = sum of children; milestones carry a small positive sign-off effort.
 6. **Entry criteria / data-readiness gates** become explicit predecessor packages (e.g. `SOW1.0` 源就绪门) on the critical path — they are the biggest rework risk and must be visible.
 
-LIC SOW1 example (verified against the actual PDF): 4 Wave Design Documents = billing milestones ₹11.65M + ₹5.82M×3 = ₹29.11M, sequenced Aug 2026 → Apr 2027; plus a Data Archival Design Document deliverable milestone (no separate fee). The schedule renders FN01→FN20 fortnight view with all 4 billing milestones on the critical path.
+示例数据湖项目 SOW1 示例：4 个 Wave 设计文档建模为计费里程碑（示例金额，如 ₹XX.XM），按商业节奏顺序排程；另含一个数据归档设计文档交付里程碑（不计费）。排程渲染 FN01→FN20 双周视图，4 个计费里程碑均在关键路径上。
 
 ## Control Report · Schedule Detail in Columns
 

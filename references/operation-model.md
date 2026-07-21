@@ -66,7 +66,7 @@ leaf actuals are the source; milestone actuals are derived.
 
 ## 4.6 Operational Artifact Guardrail (OAG) — 每次动作必须刷新交付物
 
-> **这是运营期不可妥协的护栏（Iron Rule #12）。** LIC 项目曾因在运营期忽略该护栏，导致 `raid_log`
+> **这是运营期不可妥协的护栏（Iron Rule #12）。** 示例客户项目曾因在运营期忽略该护栏，导致 `raid_log`
 > / `risk_register` / `portfolio_dashboard` 落后于事实源数周，直到人工发现 —— 属于护栏违规，不是小瑕疵。
 
 **规则**：在 `operational` / `monitoring` 阶段，任何对 `project.yaml` 的变更动作（状态 / EVM / RAID /
@@ -90,7 +90,7 @@ WBS / actuals）都必须伴随对应交付物的重新渲染，并通过 `scrip
 3. 跑 `artifact_guard.py --project <yaml>` 确认 exit 0；非零则回到第 1 步。
 
 **诊断（如何证明它能抓到违规）**：临时改动 `raid` 后直接跑 `artifact_guard.py`，会立即报
-`[数据漂移] raid_log` —— 这正是 LIC 当初漏掉的环节。
+`[数据漂移] raid_log` —— 这正是示例客户当初漏掉的环节。
 
 ## 5. Why this is the default (anti-pattern it prevents)
 

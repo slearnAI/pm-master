@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Split a two-tiered LIC Datalake program master into per-SOW sub-projects (Option A).
+"""Split a two-tiered example data-lake program master into per-SOW sub-projects (Option A).
 
 - Master keeps ONLY program-tier rows (summary + milestone); each gets a `leaves:` list
   (component leaf ids it rolls up from) so the parent cross-file rollup is trivial.
@@ -10,9 +10,9 @@
 """
 import os, sys, shutil, datetime, yaml
 
-ROOT = "/Users/wanman/Workbuddy/pm214/lic-datalake"
+ROOT = "./example-datalake-program"  # illustrative path — point at your own program master
 MASTER = os.path.join(ROOT, "project.yaml")
-SKILL = "/Users/wanman/.qclaw/workspace/skills/pm-master"
+SKILL = os.path.join(os.path.dirname(__file__), "..")  # pm-master skill root (relative; currently unused)
 
 # map SOW id -> (slug, display name, methodology)
 SOW_META = {
@@ -23,7 +23,7 @@ SOW_META = {
     'SOW5': ('sow5', 'SOW5 BCM / Disaster Recovery', 'waterfall'),
     'SOW6': ('sow6', 'SOW6 SME Support (T&M)', 'time-material'),
     'SOW7': ('sow7', 'SOW7 Project Management / Governance + OS Hardening', 'waterfall'),
-    'SOW8': ('sow8', 'SOW8 Training / Teradata Education', 'waterfall'),
+    'SOW8': ('sow8', 'SOW8 Training / MPP 数仓 Education', 'waterfall'),
     'SOW9': ('sow9', 'SOW9 Transaction Services / Infrastructure', 'waterfall'),
 }
 
@@ -79,8 +79,8 @@ def main():
                 'status': 'kicked_off',
                 'lifecycle_state': 'execution',
                 'baselined_on': d.get('baseline', {}).get('on') if isinstance(d.get('baseline'), dict) else None,
-                'domain': 'lic-datalake',
-                'product': 'LIC Datalake',
+                'domain': 'example-datalake',
+                'product': '示例数据湖项目',
                 'created': datetime.date.today().isoformat(),
                 'start_date': master_start,
                 'target_end': master_target,

@@ -78,7 +78,7 @@ def main():
     raid = data.get('raid', {}) or {}
     ptype = (proj.get('type') or '').lower()
 
-    # 仅在规划/启动期强制致命；运营期（已冻结，如 LIC）降级为告警，不阻断。
+    # 仅在规划/启动期强制致命；运营期（已冻结，如示例客户）降级为告警，不阻断。
     lifecycle = proj.get('lifecycle_state')
     enforce = phase in ('启动', '规划', '') or lifecycle in (None, 'planning', 'review', 'baselined')
     byid = {w.get('id'): w for w in wbs}

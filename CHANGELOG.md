@@ -3,7 +3,7 @@
 ## 2.2.9 (2026-07-21)
 
 ### 运营期交付物护栏（OAG, Operational Artifact Guardrail）— 新增可执行护栏
-- **根因**：LIC 项目在 operational 阶段修改了 `project.yaml`（RAID/EVM）却未重渲染对应交付物，导致
+- **根因**：示例客户 项目在 operational 阶段修改了 `project.yaml`（RAID/EVM）却未重渲染对应交付物，导致
   `raid_log` / `risk_register` / `portfolio_dashboard` 落后于事实源数周，违反「每次动作须刷新交付物」护栏。
 - **新增 `scripts/artifact_guard.py`**：内容哈希漂移检测。
   - 每次渲染（`build_subproject.py` / `rerender_docs.py`）向 `project.yaml.artifacts_meta.<key>`
@@ -17,7 +17,7 @@
   - 每次阶段门评估均打印 OAG 状态。
 - **文档化**：SKILL.md 新增 Iron Rule #12；`references/operation-model.md` §4.6、`references/phases/p2-execution.md`
   §7.1、`references/project-schema.md`（artifacts_meta）同步。
-- 验证：LIC 程序 `artifact_guard.py --project` 在重渲染后 exit 0；临时改动 `raid` 后运行立即报
+- 验证：示例客户 程序 `artifact_guard.py --project` 在重渲染后 exit 0；临时改动 `raid` 后运行立即报
   `[数据漂移] raid_log`，证明可抓到当初漏掉的环节。
 
 ### Bug fix · 程序级 RAID 渲染读取 `raid.*` 而非顶层 `risks`
@@ -25,23 +25,23 @@
   `data['raid']['risks']`，导致 `rerender_docs.py` 静默跳过风险文档（`if not data.get('risks'): skip`），
   且 `risk_register.md` 被喂空列表；`consistency_check.py` 读 `raid.risks` 故门禁仍过，造成「门过但文档陈旧」的静默漂移。
 - **修复**：两脚本的 risk 渲染路径回退到 `data['raid']['risks']`；`rerender_docs.py` 去掉 `KeyError` 隐患。
-- 验证：LIC 程序 `risks/raid_log.md` / `risks/risk_register.md` 正确反映 R1–R12 / I1–I6；`rerender_docs.py` 不再跳过。
+- 验证：示例客户 程序 `risks/raid_log.md` / `risks/risk_register.md` 正确反映 R1–R12 / I1–I6；`rerender_docs.py` 不再跳过。
 
 ## 2.2.7 (2026-07-20)
 
 ### Bug fix · 子项目状态报告「5. Risks & Blockers」渲染为 JSON 字符串
 - **根因**：`templates/common/status_report.md` 的 §5 用 `{{#each risks}} - {{this}}`，当 `risks` 为 dict 列表时 `{{this}}` 输出 `str(dict)` → 用户看到的 JSON 风格 blob。
 - **修复**：§5 改为与风险登记册一致的**风险表格**（含 `sev_cell` 严重度色标 emoji：🟢绿/🟡黄/🟠橙/🔴红），列含 # / Severity / Risk ID / Description / Category / Owner / Mitigation / Status；`risks` 为空时显示「_No active risks or blockers this period._」。
-- 验证：LIC 9 个子项目 status_report 全部重渲染，§5 无 JSON blob；空风险分支正常。三处安装 v2.2.7。
+- 验证：示例客户 9 个子项目 status_report 全部重渲染，§5 无 JSON blob；空风险分支正常。三处安装 v2.2.7。
 
 ## 2.2.6 (2026-07-20)
 
-### WBS/排期 Pillar 2+4 落盘修复 + 已冻结 LIC 的 Payment Linkage 实化
-- **`build_schedule.py` 部分图保护（防压平回归）**：项目群/program 视图缺叶子细节（部分图）时，若包已有真实 start/end 且其排程偏移为 0，则**沿用既有日期**，不再把已基线化里程碑重置为起始日。修复了 2.2.5 末次 program 视图回写把 LIC 全部里程碑压平到 2026-08-01 的回归。
+### WBS/排期 Pillar 2+4 落盘修复 + 已冻结 示例客户 的 Payment Linkage 实化
+- **`build_schedule.py` 部分图保护（防压平回归）**：项目群/program 视图缺叶子细节（部分图）时，若包已有真实 start/end 且其排程偏移为 0，则**沿用既有日期**，不再把已基线化里程碑重置为起始日。修复了 2.2.5 末次 program 视图回写把 示例客户 全部里程碑压平到 2026-08-01 的回归。
 - **program / 单 SOW 视图默认只读**：`--level program` 与 `--sow` 不再回写 `wbs` 日期（仅 full 视图拥有完整叶子图才回写），保护已冻结 master 索引不被视图渲染改动。
 - **Pillar 4 `due` 改为逐里程碑计算**：里程碑计费（fixed）且无独立合同日历 → 付款随该里程碑达成即到期（收款节奏=交付节奏），每行 `due` 默认取自身里程碑日；仅当 `sow_map`/`program.sows` 显式给 `due_date`（早于里程碑日）才可能出现 `drift`。修复了 SOW 级 `due` 泄漏到后续里程碑导致误报 30 条 drift 的 bug。
-- **LIC 元数据回填（非破坏性）**：为 LIC 37 个既有固定费率里程碑补 `billing.payment_id`（{SOW}-P{n}），未改任何日期/BAC。回填后 `plans/schedule_program_gantt.md` 的 Payment Linkage 段 37 行全部 `linked`（合同即“签字/完工触发付款”），master 未被改动，consistency/critic 仍 exit 0。
-- 验证：LIC（operational）不击穿；规划期显式 late `due_date` 仍触发 `drift`（exit 1 由 6d 门禁）。三处安装 v2.2.6。
+- **示例客户 元数据回填（非破坏性）**：为 示例客户 37 个既有固定费率里程碑补 `billing.payment_id`（{SOW}-P{n}），未改任何日期/BAC。回填后 `plans/schedule_program_gantt.md` 的 Payment Linkage 段 37 行全部 `linked`（合同即“签字/完工触发付款”），master 未被改动，consistency/critic 仍 exit 0。
+- 验证：示例客户（operational）不击穿；规划期显式 late `due_date` 仍触发 `drift`（exit 1 由 6d 门禁）。三处安装 v2.2.6。
 
 ## 2.2.5 (2026-07-20)
 
@@ -50,17 +50,17 @@
 - **`parse_sow.py` 自动标注**：每叶子自动置 `milestone_ref` 指向其 Wave 里程碑；每计费里程碑自动置 `billing.payment_id = {SOW}-P{n}`（Pillar 4 映射）。
 - **Pillar 4**：`build_schedule.py` 新增 `payment_linkage` 计算——每条固定费率支付行 → 其里程碑 → 排期日 vs 合同 due_date；状态 linked/drift/no-due。渲染到「Payment Linkage」段。
 - **`consistency_check.py` 6d 排期联动门禁（仅规划期致命，运营期跳过）**：6d-1 里程碑覆盖缺口（叶子未归属里程碑）、6d-2 支付↔里程碑缺失（固定费率 SOW 有支付行却无计费里程碑）、6d-3 支付顺序非单调（同一 SOW 计费里程碑排期日须升序）。
-- 验证：LIC（operational）不击穿（consistency/critic 均 exit 0，Payment Linkage 段正常渲染真实 ₹ 金额）；规划期样例触发 6d 门禁。
+- 验证：示例客户（operational）不击穿（consistency/critic 均 exit 0，Payment Linkage 段正常渲染示例 ₹ 金额）；规划期样例触发 6d 门禁。
 - 安全沿用 Pillar 1 设计：所有新门禁仅在 planning_now（phase∈{启动,规划,''} 或 lifecycle∈{planning,review,baselined,None}）致命。
 
 ## 2.2.4 (2026-07-20)
 
 ### WBS 拆解纪律 Pillar 1（6 因素 + Critic 自审引擎）+ Pillar 3（双周 fortnight 颗粒度）
-- **新增 `scripts/critic_review.py`（可执行 Critic 自审）**：把 `sow-parsing-playbook.md` 的散文 Critic 固化为 6 因素校验——scope 可追溯 / milestone 归属 / payment 挂支付行 / assumptions 可量化边界 / constraints 外部前置须 entry_gate / dependencies 连通。规划期致命（exit 1），运营期（已冻结，如 LIC）降级为提示不阻断。
+- **新增 `scripts/critic_review.py`（可执行 Critic 自审）**：把 `sow-parsing-playbook.md` 的散文 Critic 固化为 6 因素校验——scope 可追溯 / milestone 归属 / payment 挂支付行 / assumptions 可量化边界 / constraints 外部前置须 entry_gate / dependencies 连通。规划期致命（exit 1），运营期（已冻结，如 示例客户）降级为提示不阻断。
 - **`consistency_check.py` 新增 6c 拆解纪律门禁（仅规划/启动期致命）**：集成 `critic_review.py --strict` 结果 + 校验 `decomposition.critic_passed==true` + assumptions 可量化边界。运营期自动跳过，保护已冻结项目不被新门禁击穿。
 - **Pillar 3**：`init_project.py` 默认 `control.leaf_granularity: fortnight` + `granularity_threshold: 10`（=10 工作人天，沿用既有默认但显式化），作为 waterfall/program 叶子包标准颗粒度。
 - **`sow-parsing-playbook.md` §2.6** 重写：Critic 自审列出 6 因素清单，并要求落盘后运行 `critic_review.py --strict` 并置 `critic_passed=true`。
-- 验证：LIC（operational）一致性 exit 0 / critic exit 0（不击穿）；规划期样例触发 7 项致命（scope/milestone/dependency/critic_passed/assumption-bound 等），exit 1。
+- 验证：示例客户（operational）一致性 exit 0 / critic exit 0（不击穿）；规划期样例触发 7 项致命（scope/milestone/dependency/critic_passed/assumption-bound 等），exit 1。
 
 ## 2.2.3 (2026-07-20)
 
@@ -82,7 +82,7 @@
 - **SKILL.md / SKILL.en.md 新增 Iron Rule #11（Bottom-up authoring & rollup）**：计划/状态/RAID/变更控制在最低归属单元（SOW/子项目）编制，程序层为只读脚本汇总，不得作为手工并行的真相源。违反后果：治理漂移、虚假状态。
 - **Program-specific Rules 第 6 条** 引用 Iron Rule #11，并明确 `rollup_subprojects.py`（跨文件）与 `rollup_program_wbs.py`（单文件两层）的分工。
 - **`references/program-management.md`** Per-SOW Sub-Project 段落：指向 `operation-model.md`，新增「Rollup（程序=子项目的只读聚合）」小节，写明刷新程序视图的标准命令序列（rollup → control_engine），并强调派生字段禁手工编辑。
-- 背景：LIC Datalake 程序（9 份 SOW）实测时，子项目拆分后若程序级 RAID/status 与子项目各维护一套会一周内漂移；此模型从机制上消除该反模式。
+- 背景：示例数据湖项目 程序（9 份 SOW）实测时，子项目拆分后若程序级 RAID/status 与子项目各维护一套会一周内漂移；此模型从机制上消除该反模式。
 
 ## 2.2.1 (2026-07-19)
 
@@ -112,9 +112,9 @@
 ## 2.1.7 (2026-07-19)
 
 ### SOW 解析深度修复（用户评审 SOW1 子项目后：计划仅显示首双周、缺 Wave 结构与计费里程碑）
-- **根因**：此前 SOW1 计划是「初级水平」——套用一次性泛化 4 阶段瀑布，未读 SOW 真实 **4-Wave 商业结构** 与 **5 个设计文档签字里程碑**（其中 4 个为计费事件 = ₹29.11M），排期只覆盖前 ~5 周。
-- **专家级重做（CoT + 评审）**：先逐字提取 SOW 计费/交付节，把每个 "<Deliverable> post sign-off" 事件建模为 `milestone: true` + `billing:{event,fee_inr,currency,status}` 包；4 个 Wave 各为 summary 包（源分析→逻辑模型→物理模型+DDL→S2T映射→签字里程碑），并按商业节奏顺序排程（W1 2026-10-15 → W4 2027-04-28，全 ~9 个月）；NOS 归档设计为独立交付里程碑（fee_inr:0，标注非独立计费）。
-- **叶子包 ≤10 人天**：逻辑/物理/S2T 拆为 ≤10 天领域专家桶（W1.2a FSDM / W1.2b FSAS / W1.3a Core DDL / W1.3b Semantic DDL …），满足控制门硬阈值；summary/milestone 用子项累计估算。
+- **根因**：此前 SOW1 计划是「初级水平」——套用一次性泛化 4 阶段瀑布，未读 SOW 真实 **4-Wave 商业结构** 与 **5 个设计文档签字里程碑**（其中 4 个为计费事件 = 示例金额），排期只覆盖前 ~5 周。
+- **专家级重做（CoT + 评审）**：先逐字提取 SOW 计费/交付节，把每个 "<Deliverable> post sign-off" 事件建模为 `milestone: true` + `billing:{event,fee_inr,currency,status}` 包；4 个 Wave 各为 summary 包（源分析→逻辑模型→物理模型+DDL→S2T映射→签字里程碑），并按商业节奏顺序排程（W1 2026-10-15 → W4 2027-04-28，全 ~9 个月）；客户系统B 归档设计为独立交付里程碑（fee_inr:0，标注非独立计费）。
+- **叶子包 ≤10 人天**：逻辑/物理/S2T 拆为 ≤10 天领域专家桶（W1.2a FSDM / W1.2b 客户系统A / W1.3a Core DDL / W1.3b Semantic DDL …），满足控制门硬阈值；summary/milestone 用子项累计估算。
 - **数据就绪门**：新增 `SOW1.0 源就绪门` 作为关键路径前置（SME+真实数据+接口文档），对应 SOW 最大返工风险。
 - **子项目联动**：subprojects/sow1/project.yaml 补 `billing_milestones[]` 索引（M1–M5 含金额/日期/状态）与 4 项 Wave 级风险（含 S1-R4 计费里程碑延迟现金流风险）；RAID 依赖写回 SOW2/3/7 正确前置。
 - **新增参考规范**：`references/program-management.md` 加「Billing-Milestone-Driven WBS Decomposition」专家约定（解析 SOW 必须先做链路思考+评审，再写 WBS）。
@@ -123,7 +123,7 @@
 
 ## 2.1.6 (2026-07-19)
 
-### 两个架构性缺口补齐（用户评审 LIC SOW1 后提出）
+### 两个架构性缺口补齐（用户评审 示例客户 SOW1 后提出）
 
 **1. 子项目（per-SOW sub-project）层级**
 - 每个 SOW 现在作为独立「子项目」维护，拥有自己的 `project.yaml`、RAID 日志、风险登记册、状态报告，由各 SOW 项目经理独立负责。
@@ -137,13 +137,13 @@
 - `render.py` 新增 `eq` 辅助函数（`{{#if (eq granularity "fortnight")}}`）以支撑条件渲染；模板 `schedule_gantt.md` 新增双周分支。
 - 修复：`build_sow_kickoff.py` 仅把 `tier=program` 汇总包识别为 SOW 级（避免阶段组重复开启动会）；`consistency_check.py` 孤儿包检查仅覆盖顶层 SOW（`^SOW\d+$`），不再误报阶段组。
 
-**验证**：LIC SOW1 子项目建立并索引成功；fortnight 排期渲染（FN01–FN03 分桶、任务命名正确）；子项目 RAID/风险/状态渲染含严重度色标；程序级一致性门 exit 0。
+**验证**：示例客户 SOW1 子项目建立并索引成功；fortnight 排期渲染（FN01–FN03 分桶、任务命名正确）；子项目 RAID/风险/状态渲染含严重度色标；程序级一致性门 exit 0。
 
 ## 2.1.3 (2026-07-19)
 
 ### 项目群章程（Program Charter）重构（用户 WorkBuddy 实测 docs/program_charter.md 反馈）
 - **Program Architecture mermaid 修复**：用户渲染稿的 `subgraph DELIVERY` 内节点 `S6/S7` 指向 subgraph 自身（`S6 --> DELIVERY`）属非法 mermaid 语法。章程模板重写为数据驱动版，架构图改为 SOW6→CORE、SOW7 作为独立节点，不再自指 subgraph（已渲染验证合法）。
-- **财务与商务模型（Financials & Commercial Model）费用捕获**：原渲染稿费用整列 `（待定）`。新增 `program.sows[]`（sow/workstream/model/billing/fee），章程「财务与商务模型」表改由 `program.sows[].fee` 驱动；未锁定时须填 `TBC — 原因`，禁止整表 `（待定）`。已把 LIC 实际项目数据写入 `project.yaml` 并重渲染，费用列呈现实值/TBC。
+- **财务与商务模型（Financials & Commercial Model）费用捕获**：原渲染稿费用整列 `（待定）`。新增 `program.sows[]`（sow/workstream/model/billing/fee），章程「财务与商务模型」表改由 `program.sows[].fee` 驱动；未锁定时须填 `TBC — 原因`，禁止整表 `（待定）`。已把 示例客户 实际项目数据写入 `project.yaml` 并重渲染，费用列呈现实值/TBC。
 - **一致性门新增规则 7d**：`program.sows[].fee` 必填，空白/`（待定）`/TBD 即致命（未锁定写 `TBC — 原因` 放行）。`project-schema.md` / `program-management.md` 补 `sows[]` 与 `fee` 字段定义。
 - 章程结构对齐用户预期：表头 + 架构图 + 商业论证/目标/范围/范围外/财务/治理门/关键风险/成功标准 + 合同边界节。
 
@@ -220,18 +220,18 @@
 ### 进一步脱敏（合规 · 消除法律风险）
 - `scripts/rollup_program_wbs.py` 的内置示例映射进一步去标识化：
   - `COMPONENT_MAP`：剥离 SOW 组件 slug 的描述性后缀（`sow1-data-modelling` → `sow1`，…，`sow9-ts` → `sow9`，`external-pii` → `ext-pii`），仅保留编号标识。
-  - `PHASE_NAME`：阶段别名由客户专属描述（Wave 1–4 基础建模 / 金融与协议 / FSAS 分析结构 / NOS 归档与集成）改为中性 `Stream 1–4` 命名，移除 FSAS / NOS / 金融与协议等客户系统/领域泄露。
-  - 三处「某保险数据湖项目 / 保险数据湖」注释与告警文案统一改为「示例项目」，不再暴露真实行业与客户。
-- `CHANGELOG.md`：将 1.1.0 中关于内置示例的语义描述「某保险数据湖」改为中性的「示例项目」。
+  - `PHASE_NAME`：阶段别名由客户专属描述（Wave 1–4 基础建模 / 示例主题域 / 客户系统A 分析结构 / 客户系统B 归档与集成）改为中性 `Stream 1–4` 命名，移除 客户系统A / 客户系统B / 示例主题域等客户系统/领域泄露。
+  - 三处「某示例数据湖项目 / 示例数据湖项目」注释与告警文案统一改为「示例项目」，不再暴露真实行业与客户。
+- `CHANGELOG.md`：将 1.1.0 中关于内置示例的语义描述「某示例数据湖项目」改为中性的「示例项目」。
 
-> 说明：保留的 `Wave` / `保险数据湖` 命中（如 `references/methodology-hybrid.md`、`hybrid_playbook.md`、`expert-roles.md`）属**通用方法论/领域示例词汇**，非真实客户或厂商名，引擎路由与设计依赖之，故维持不变。
+> 说明：保留的 `Wave` / `示例数据湖项目` 命中（如 `references/methodology-hybrid.md`、`hybrid_playbook.md`、`expert-roles.md`）属**通用方法论/领域示例词汇**，非真实客户或厂商名，引擎路由与设计依赖之，故维持不变。
 
 ## 1.3.1 (2026-07-16)
 
 ### 脱敏（合规 · 消除法律风险）
 - 全量扫描技能文件，移除真实客户名与厂商名等敏感信息，统一改为代号：
   - 真实保险行业客户名 → `客户A`（代号 `ALPHA`）；真实 MPP 数仓厂商名 → `MPP 数仓`（通用占位）；另一被点名的集成商经扫描确认本仓库**不存在**，无需处理。
-  - `references/activity-expert-map.md`：`insurance-data-lake` 的示例项目由真实客户项目名改为 `客户A 数据湖（代号 ALPHA，MPP 数仓）`，角色中的厂商专属 ETL 工程师改为 `MPP 数仓 TPT/ETL 工程师`。
+  - `references/activity-expert-map.md`：`example-data-lake` 的示例项目由真实客户项目名改为 `客户A 数据湖（代号 ALPHA，MPP 数仓）`，角色中的厂商专属 ETL 工程师改为 `MPP 数仓 TPT/ETL 工程师`。
   - `scripts/dispatch.py`：专家角色标题中的厂商名改为 `MPP 数仓 TPT/ETL 工程师` / `MPP 数仓/平台工程师`。
   - `references/expert-roles.md`：技术栈示例改为 `MPP 数仓、云数仓`；领域特化改为 `MPP 数仓 → 批量加载（厂商 TPT/MLOAD 类工具）`。
 - 经二次全仓扫描，真实客户名 / 厂商名已实现 **0 残留**；`examples/sample_project.yaml` 与 `rollup_program_wbs.py` 内置示例均为通用占位（无客户名），予以保留。
@@ -312,7 +312,7 @@
 
 ### 用户实测三项反馈的真修
 - **#1 project_state.py 数据丢失加固**：保留 2.1.3 的 PyYAML 硬失败守卫；新增 `_save` 在覆盖非空文件前做时间戳备份（`project.yaml.bak_YYYYMMDD_HHMMSS`），并拒绝「用空 dict 覆盖非空文件」（空数据=疑似 PyYAML 加载失败）的毁灭性写入（exit 5）。已用 harness 验证守卫生效，文件未被破坏。
-- **#2 合同费用真实捕获**：原渲染整列 `（待定）` 实为缺数据。从归档的 9 份已签 SOW PDF 提取真实金额写入 `program.sows[].fee` 与 `program.contracts[]`（SOW1/3/4/5/7/9 固定费、SOW6 T&M、SOW8 USD 课程总额换算 INR、SOW2 T&M 封顶人天）。重渲染后章程「财务与商务模型」费用列显示真实 ₹ 金额，0 个数据单元格为（待定）。
+- **#2 合同费用真实捕获**：原渲染整列 `（待定）` 实为缺数据。从归档的 9 份示例 SOW 文档 提取示例金额写入 `program.sows[].fee` 与 `program.contracts[]`（SOW1/3/4/5/7/9 固定费、SOW6 T&M、SOW8 USD 课程总额换算 INR、SOW2 T&M 封顶人天）。重渲染后章程「财务与商务模型」费用列显示示例 ₹ 金额，0 个数据单元格为（待定）。
 - **#3 风险/RAID 色标**：修复此前编辑落到错误路径（templates/risks/ 不存在，实为 templates/common/）导致未生效。现模板 `risk_register.md`/`raid_log.md` 正确调用 `sev_cell`，重渲染后 risk_register 含 7 个、raid_log 含 11 个严重度色标 emoji（🔴🟠🟡🟢）。已重渲染用户项目在盘文件，mtime 更新。
 
 ## 2.1.5 (2026-07-19)

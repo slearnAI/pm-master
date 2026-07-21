@@ -312,7 +312,7 @@ def main():
 
 
     # ---- 6c. 拆解纪律（Pillar 1 · 6 因素，仅规划期致命） ----
-    # 进入运营(执行/监控/收尾)后不再阻断（保护已冻结项目，如 LIC），
+    # 进入运营(执行/监控/收尾)后不再阻断（保护已冻结项目，如示例客户），
     # 但规划/启动期须强制 6 因素拆解 + Critic 自审通过。
     planning_now = phase in ('启动', '规划', '') or (proj.get('lifecycle_state') in (None, 'planning', 'review', 'baselined'))
     if planning_now:

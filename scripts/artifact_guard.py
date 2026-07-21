@@ -7,7 +7,7 @@ PM Master · 运营期交付物护栏（Operational Artifact Guardrail, OAG）
 强制（可执行）：在 operational / monitoring 阶段，任何对 project.yaml（事实源）的变更动作，
 都必须伴随对应交付物（artifact）的刷新。否则视为护栏违规（guardrail breach）。
 
-这是对手工/执行阶段「改了事实源、文档没跟上」漂移的根因封堵 —— 之前 LIC 项目就因该护栏在
+这是对手工/执行阶段「改了事实源、文档没跟上」漂移的根因封堵 —— 之前示例客户项目就因该护栏在
 运营期被忽略，导致 raid_log / risk_register / portfolio_dashboard 落后于事实源，直到被人工发现。
 
 判定逻辑（内容哈希，不依赖 mtime 技巧）：
