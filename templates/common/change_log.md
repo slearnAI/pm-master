@@ -1,19 +1,19 @@
-# 变更日志 · {{ project.name }}
+# Change Log · {{ project.name }}
 
-> 记录所有已提出 / 已评审 / 已实施的变更，形成可追溯的变更链（CCB 管理）。阶段门结论、
-> 波次出口评审结论亦应在此留痕。
+> Records all proposed / reviewed / implemented changes, forming a traceable change chain (CCB-managed). Stage gate conclusions
+> and wave exit review conclusions should also be logged here.
 
-| CR 编号 | 日期 | 类型 | 描述 | 影响（范围/进度/成本/风险） | CCB 结论 | 状态 |
+| CR ID | Date | Type | Description | Impact (Scope/Schedule/Cost/Risk) | CCB Decision | Status |
 |---------|------|------|------|------------------------------|----------|------|
 {{#each changes}}
 | {{this.id}} | {{this.date}} | {{this.type}} | {{this.description}} | {{this.impact}} | {{this.decision}} | {{this.status}} |
 {{/each}}
 
-## 变更类型图例
-- **范围(Scope)** / **进度(Schedule)** / **成本(Cost)** / **资源(Resource)** / **质量(Quality)** / **门结论(Gate)**
+## Change Type Legend
+- **Scope** / **Schedule** / **Cost** / **Resource** / **Quality** / **Gate**
 
-## 状态定义
-- 已提出 / 评审中 / 已批准 / 有条件批准 / 已驳回 / 实施中 / 已关闭
+## Status Definitions
+- Proposed / Under Review / Approved / Approved with Conditions / Rejected / In Implementation / Closed
 
-> 提示：任何偏离基线的变更须先填 `change_request`，CCB 评审后结论记入本日志；
-> 项目群与 hybrid 项目必须配备本日志（一致性校验会告警缺失）。
+> Tip: Any change deviating from baseline must first fill in `change_request`; after CCB review, the conclusion is recorded in this log;
+> programs and hybrid projects must have this log (consistency check will alert on its absence).

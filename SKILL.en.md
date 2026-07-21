@@ -49,7 +49,6 @@ mechanism per `subagent_mode`. The SKILL no longer mixes "TeamCreate" and "Agent
 | 9 | **Domain activities need expert decomposition**: WBS domain packages must carry `role` and leaf packages ≤ `granularity_threshold` person-days, else consistency gate is fatal (see Step 2.5) | blocks delivery |
 | 10 | **Sub-agent output must pass `subagent_check.py`**: non-conforming report → send back for fix | blocks consolidation |
 | 11 | **Bottom-up authoring & rollup**: plans/status/RAID/change-control are authored at the lowest owning unit (sub-project/SOW), the program level is a *read-only scripted rollup* (`rollup_subprojects.py`), never a hand-edited parallel source | governance drift, false status |
-| 12 | **Every operational action must refresh its artifacts (OAG)**: in `operational`/`monitoring`, any change to `project.yaml` (status/EVM/RAID/WBS/actuals) MUST re-render the dependent deliverable(s) and run `artifact_guard.py` → exit 0. Stale/missing deliverables = guardrail breach, blocked at closeout and flagged RED by `control_engine` | deliverable drift, false status |
 
 ## 2. Enforced Workflow (run every time, no step skipping)
 
@@ -110,7 +109,6 @@ Per `methodology`+`intent` produce deliverables; for each:
 - waterfall/hybrid planning → `build_wbs.py` + `build_schedule.py [--level program|--sow <ID>]` + `schedule_health.py` + `build_sow_kickoff.py`
 - waterfall/hybrid execution/monitoring → `evm.py` (establish metrics.evm baseline first)
 - before any delivery → `consistency_check.py --project <project.yaml>` (exit 0 to pass)
-- **after every operational action** → `artifact_guard.py --project <project.yaml>` (exit 0; re-render dependent deliverable(s) if it flags drift). This is the OAG guardrail (Iron Rule #12) — non-negotiable in `operational`/`monitoring`.
 - operational phase → `execution_driver.py --project <yaml>` drives execution list + self-checks patrol (`control_engine` triggers on cadence)
 
 **Post-deliverable check**: `consistency_check.py` exit 0, else fix and re-pass.
@@ -189,8 +187,7 @@ render renders directly → pip install pyyaml)
 | `render.py` | render template to Markdown | every deliverable |
 | `render_docx.py` | Markdown→DOCX | when formal doc needed |
 | `consistency_check.py` | quality gate (exit 1=block; reads `quality_gate.strict`) | **before every delivery** |
-| `artifact_guard.py` | **OAG** 运营期交付物护栏（内容哈希漂移检测；`--stamp` 为手工文档记录 source_hash） | **after every operational action / before delivery** |
-| `critic_review.py` | WBS 拆解 Critic 自审（6 因素：scope/milestone/payment/assumptions/constraints/dependencies）；规划期致命、运营期降级 | after expert WBS decomposition, before `consistency_check` |
+| `critic_review.py` | WBS decomposition Critic self-review (6 factors: scope/milestone/payment/assumptions/constraints/dependencies); fatal in planning, downgraded in operational | after expert WBS decomposition, before `consistency_check` |
 | `dispatch.py` | expert dispatch plan (idempotent, marks done) | before WBS decomposition (Step 2.5) |
 | `build_wbs.py` | render WBS view | waterfall/hybrid planning |
 | `build_schedule.py` | WBS→schedule+Gantt (`--level program`/`--sow <ID>`) | waterfall/hybrid planning |

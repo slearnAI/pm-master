@@ -59,6 +59,39 @@ def _group_by_domain(rows):
     return groups
 
 
+def _build_tree(rows):
+    """把扁平 wbs 构造成层级分解树（parent 字段或 id 前缀 'X.Y' 决定父子）。
+    返回 list of 节点：{id, name, role, domain, children:[...]}。
+    用于模板渲染 mermaid 分解树（graph TD）。"""
+    nodes = {}
+    for w in rows:
+        pid = w.get('id')
+        if not pid:
+            continue
+        nodes[pid] = {
+            'id': pid,
+            'name': w.get('name', pid),
+            'role': w.get('role') or '',
+            'domain': w.get('domain') or '',
+            'tier': w.get('tier', ''),
+            'parent': w.get('parent'),
+            'children': [],
+        }
+    roots = []
+    for pid, n in nodes.items():
+        par = n.get('parent')
+        # 无 parent 时，尝试用 id 前缀推断（如 SOW1.1 -> SOW1）
+        if not par and '.' in pid:
+            cand = pid.rsplit('.', 1)[0]
+            par = cand if cand in nodes else None
+        if par and par in nodes:
+            n['parent_id'] = par
+            nodes[par]['children'].append(n)
+        else:
+            roots.append(n)
+    return roots
+
+
 def main():
     ap = argparse.ArgumentParser(description="PM Master · WBS 渲染器（两层颗粒度）")
     ap.add_argument('--project', required=True, help="单一事实源 project.yaml")
@@ -93,6 +126,7 @@ def main():
         view_group_note = '领域'
 
     wbs_groups = _group_by_domain(rows)
+    wbs_tree = _build_tree(rows)
 
     tpl_path = a.template or os.path.join(SCRIPT_DIR, '..', 'templates', 'waterfall', 'wbs.md')
     tpl_path = os.path.abspath(tpl_path)
@@ -107,6 +141,7 @@ def main():
         'view_note': view_note,
         'view_group_note': view_group_note,
         'wbs_groups': wbs_groups,
+        'wbs_tree': wbs_tree,
     })
 
     root = os.path.dirname(os.path.abspath(a.project))

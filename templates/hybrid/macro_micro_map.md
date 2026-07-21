@@ -1,8 +1,8 @@
-# 宏微映射 · {{ project.name }}
+# Macro–Micro Mapping · {{ project.name }}
 
-> 将宏观里程碑与微观迭代对齐，确保短期交付持续支撑长期目标。
+> Align macro milestones with micro iterations to ensure short-term delivery continuously supports long-term goals.
 
-## 宏微对齐图
+## Macro–Micro Alignment Diagram
 
 ```mermaid
 flowchart LR
@@ -11,11 +11,11 @@ flowchart LR
 {{/each}}
 ```
 
-## 映射表（Macro ↔ Micro）
-| 宏观里程碑 | 微观迭代 | 对齐状态 |
+## Mapping Table (Macro ↔ Micro)
+| Macro Milestone | Micro Iteration | Alignment Status |
 |-----------|---------|----------|
 {{#each map}}
 | {{this.macro_milestone}} | {{this.micro_iteration}} | {{this.alignment_status}} |
 {{/each}}
 
-> 提示：对齐状态建议取值——已对齐 / 有偏差 / 已脱节；出现偏差需触发治理评审。
+> Tip: Alignment status suggested values — Aligned / Deviating / Disconnected; a deviation should trigger a governance review.

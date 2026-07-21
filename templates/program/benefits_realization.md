@@ -1,20 +1,20 @@
-# 收益实现计划 · {{ project.name }}
+# Benefits Realization Plan · {{ project.name }}
 
-> 追踪项目群预期收益的定义、目标、基线、责任人与实现进度，确保投资回报可衡量、可问责。
+> Tracks the definition, target, baseline, owner, and realization progress of the program's expected benefits, ensuring ROI is measurable and accountable.
 
-## 收益登记
-| ID | 描述 | 衡量口径 | 目标 | 基线 | 已核实 | 责任人 | 计划实现日 | 状态 |
+## Benefits Register
+| ID | Description | Metric | Target | Baseline | Realized | Owner | Planned Realization Date | Status |
 |----|------|---------|------|------|--------|--------|------------|------|
 {{#each benefits}}
 | {{this.id}} | {{this.description}} | {{this.metric}} | {{this.target}} | {{this.baseline}} | {{this.realized}} | {{this.owner}} | {{this.realization_date}} | {{this.status}} |
 {{/each}}
 
-## 说明
-- **衡量口径（metric）**：量化收益的具体指标与口径定义。
-- **基线（baseline）**：收益实现前的起始测量值，用于计算净增益。
-- **已核实（realized）**：截至目前已实现/确认的数值。
-- **责任人（owner）**：对该收益达成负责的具体角色（必填，一致性校验强制）。
-- **计划实现日（realization_date）**：预期收益落地的日期。
-- **状态**：未启动 / 进行中 / 已达成 / 已关闭。
+## Notes
+- **Metric**: the specific indicator and definition for quantifying the benefit.
+- **Baseline**: the starting measurement before benefit realization, used to compute net gain.
+- **Realized**: the value achieved/confirmed to date.
+- **Owner**: the specific role accountable for the benefit (required; enforced by consistency check).
+- **Planned Realization Date**: the expected date the benefit lands.
+- **Status**: Not Started / In Progress / Achieved / Closed.
 
-> 提示：收益须有明确责任人；达成后由治理角色签字确认闭环（见 change_log）。
+> Tip: Each benefit must have a clear owner; once achieved, the governance role signs off to close the loop (see change_log).

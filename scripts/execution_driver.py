@@ -127,20 +127,29 @@ def get_executable_work(wbs, methodology):
 
 
 def check_control_needed(project_yaml_path, data):
-    """检查是否需要运行 control_engine 巡检"""
+    """检查是否需要运行 control_engine 巡检。
+    优先读取 data['last_control_check']（与 project_state 约定一致），
+    其次 control.last_control_check。"""
     ctrl = data.get('control') or {}
     cadence_days = ctrl.get('cadence_days', 7)
-
-    # 检查上次巡检时间
-    last_check = ctrl.get('last_control_check')
+    last_check = data.get('last_control_check') or ctrl.get('last_control_check')
     if last_check:
         if isinstance(last_check, str):
-            last_check = datetime.date.fromisoformat(last_check)
-        days_since = (datetime.date.today() - last_check).days
-        if days_since < cadence_days:
-            return False, days_since
-
+            try:
+                last_check = datetime.date.fromisoformat(last_check)
+            except ValueError:
+                last_check = None
+        if last_check:
+            days_since = (datetime.date.today() - last_check).days
+            if days_since < cadence_days:
+                return False, days_since
     return True, 0
+
+
+def stamp_control_check(data, path):
+    """巡检后写入 last_control_check，避免重复巡检（E4）。"""
+    data['last_control_check'] = datetime.date.today().isoformat()
+    save(data, path)
 
 
 def main():
@@ -169,6 +178,7 @@ def main():
         needed, days = check_control_needed(a.project, data)
         if needed:
             print(f"[execution_driver] 需要运行 control_engine 巡检")
+            print(f"  python3 {CONTROL_ENGINE} --project {a.project}")
             sys.exit(0)
         else:
             print(f"[execution_driver] 距上次巡检 {days} 天，无需巡检")
@@ -179,6 +189,10 @@ def main():
 
     # 检查是否需要巡检
     ctrl_needed, days_since = check_control_needed(a.project, data)
+
+    # 巡检后回写时间戳（幂等：仅当确实触发时才在真实巡检分支落盘；此处仅声明）
+    if ctrl_needed and not a.json:
+        stamp_control_check(data, a.project)
 
     # 输出
     if a.json:

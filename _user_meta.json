@@ -1,7 +1,6 @@
 {
   "name": "pm-master",
-  "version": "2.0.0",
-  "description": "科技行业项目与项目群管理技能 - 强制执行手册版",
-  "author": "PM Master Team",
-  "license": "MIT"
+  "installedAt": 1784088253151,
+  "source": "userImport",
+  "version": "2.2.9"
 }

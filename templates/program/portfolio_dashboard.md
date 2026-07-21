@@ -1,17 +1,17 @@
-# 组合看板 · {{ project.name }}
+# Portfolio Dashboard · {{ project.name }}
 
-> 从组合视角监控各组件的健康度与进度绩效（CPI/SPI），支撑优先级与资源调度。
+> Monitors each component's health and schedule performance (CPI/SPI) from a portfolio perspective, supporting prioritization and resource scheduling.
 
-## 组件健康看板
-| 组件 | 方法论 | 健康度 | CPI | SPI | 负责人 | 备注 |
+## Component Health Dashboard
+| Component | Methodology | Health | CPI | SPI | Owner | Notes |
 |------|--------|--------|-----|-----|--------|------|
 {{#each components}}
 | {{this.name}} | {{this.methodology}} | {{ sev_icon(this.health) }} {{this.health}} | {{this.cpi}} | {{this.spi}} | {{this.owner}} | {{this.note}} |
 {{/each}}
 
-## 判读说明
-- **健康度**：🟢 绿（正常）/ 🟡 黄（关注）/ 🔴 红（告警）。
-- **CPI**（成本绩效指数）：>1 节支，=1 持平，<1 超支。
-- **SPI**（进度绩效指数）：>1 超前，=1 持平，<1 滞后。
+## Interpretation
+- **Health**: 🟢 Green (normal) / 🟡 Yellow (watch) / 🔴 Red (alert).
+- **CPI** (Cost Performance Index): >1 under budget, =1 on budget, <1 over budget.
+- **SPI** (Schedule Performance Index): >1 ahead, =1 on track, <1 behind.
 
-> 提示：健康度为红或 CPI/SPI < 0.9 的组件应进入治理例会重点跟踪。
+> Tip: Components with Red health or CPI/SPI < 0.9 should enter the governance meeting for focused tracking.

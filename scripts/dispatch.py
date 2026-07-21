@@ -161,6 +161,17 @@ def build_plan(data, threshold):
             continue
         expert = specialize(role, domain, product)
         pid = w.get('id')
+        # 幂等：role 已存在且未超阈值 -> 视为已解决，标记 done（避免重复派专家）
+        already_done = bool(w.get('role')) and est <= threshold and not (is_domain_activity(role, name, dom) and not role)
+        if already_done:
+            brief = (f"『{name}』已具备 role={role} 且颗粒度达标（{est:g}≤{threshold:g} 人天），"
+                     f"无需再调度；如仍需细化可由专家增量拆解。")
+            plan.append({
+                'id': pid, 'name': name, 'estimate': est,
+                'domain': dom, 'role': role, 'expert': expert,
+                'actions': ['done'], 'brief': brief,
+            })
+            continue
         brief = (f"调度 {expert or '领域专家'}：把『{name}』（当前 {est:g} 人天）拆成叶子工作包"
                  f"（每个 ≤{threshold:g} 人天），含 唯一ID(前缀 {pid}.x)、交付物、责任人角色、估算、"
                  f"验收准则(DoD)、依赖(dependsOn)；回写 project.yaml 的 wbs 列表。")
@@ -225,14 +236,16 @@ def main():
         return
 
     md = render_md(plan, domain, product, threshold)
+    pending = [p for p in plan if 'done' not in p['actions']]
+    done = [p for p in plan if 'done' in p['actions']]
     if a.out:
         os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
         with open(a.out, 'w', encoding='utf-8') as f:
             f.write(md)
-        print(f"[dispatch] 计划已写入 {a.out}（{len(plan)} 项待调度）")
+        print(f"[dispatch] 计划已写入 {a.out}（{len(pending)} 项待调度 / {len(done)} 项已达标）")
     else:
         print(md)
-    print(f"\n共 {len(plan)} 个工作包需调度专家（阈值 {threshold:g} 人天）。", file=sys.stderr)
+    print(f"\n共 {len(pending)} 个工作包需调度专家（阈值 {threshold:g} 人天），{len(done)} 项已达标可跳过。", file=sys.stderr)
 
 
 if __name__ == '__main__':
