@@ -1,27 +1,43 @@
-# 工作分解结构（WBS）· {{ project.name }}
+# Work Breakdown Structure (WBS) · {{ project.name }}
 
-> **视图：{{ view_label }}** — {{ view_note }}
-> 两层颗粒度约定（pm-master）：**项目群层级仅呈现里程碑级**（各 SOW 汇总包 + 各阶段里程碑汇总包）；
-> **组件层级呈现最细叶子工作包级**（含领域专家拆解包）。两者共用单一事实源（`project.yaml`），
-> 由 `build_wbs.py --view` 切换。`mid(this.id)` 生成甘特任务 id，依赖网络由 `wbs[].dependsOn` 定义。
+> **View: {{ view_label }}** — {{ view_note }}
+> Two-tier granularity convention (pm-master): **program level shows milestones only** (each SOW summary package + per-phase milestone summary packages);
+> **component level shows the finest leaf packages** (including domain-expert decompositions). Both share a single source of truth (`project.yaml`),
+> switched via `build_wbs.py --view`. `mid(this.id)` generates the Gantt task id; the dependency network is defined by `wbs[].dependsOn`.
 
-## WBS 总表（{{ view_label }}）
+## WBS Master Table ({{ view_label }})
 
-| ID | 名称 | 层级 | 领域 | 交付物 | 责任人 | 角色/专家 | 估算(人天) | 工期 | 开始时间 | 结束时间 | 依赖 | 验收准则(DoD) |
-|----|------|------|------|--------|--------|-----------|------------|------|----------|----------|------|---------------|
+| ID | Name | Tier | Domain | Deliverable | Owner | Role/Expert | Estimate (person-days) | Duration | Start | End | Depends On | Acceptance (DoD) |
+|----|------|------|--------|-------------|-------|-------------|------------------------|----------|-------|-----|-------------|-------------------|
 {{#each wbs_groups}}
 {{#each this.items}}
-| {{this.id}} | {{this.name}} | {{this.level}} | {{this.domain}} | {{this.deliverable}} | {{this.owner}} | {{this.role}}{{#if this.expert}}（{{this.expert}}）{{/if}} | {{this.estimate}} | {{this.duration}} | {{this.start}} | {{this.end}} | {{this.dependsOn}} | {{this.acceptance}} |
+| {{this.id}} | {{this.name}} | {{this.level}} | {{this.domain}} | {{this.deliverable}} | {{this.owner}} | {{this.role}}{{#if this.expert}} ({{this.expert}}){{/if}} | {{this.estimate}} | {{this.duration}} | {{this.start}} | {{this.end}} | {{this.dependsOn}} | {{this.acceptance}} |
 {{/each}}
 {{/each}}
 
-## WBS 甘特图（mermaid · {{ view_label }}）
+## WBS Decomposition Tree (mermaid · hierarchy/decomposition · {{ view_label }})
 
-> 按 **{{ view_group_note }}** 分组；每包以起止日期绝对定位（不混用 `after` 依赖链，保证语法合法、可读）。
+> Built automatically from `wbs[].parent` (or id prefix `SOW1.1 → SOW1`); summary/milestone packages are marked `▶`,
+> leaf packages show `role` (domain expert). Same single source of truth (`project.yaml.wbs`) as the Gantt below, a second view.
+
+```mermaid
+graph TD
+{{#each wbs_tree}}
+    {{ mlabel(this.id) }}["{{ mlabel(this.name) }}{{#if this.role}} · {{this.role}}{{/if}}{{#if this.tier}} ▶{{/if}}"]
+{{#each this.children}}
+    {{ mlabel(this.parent_id) }} --> {{ mlabel(this.id) }}["{{ mlabel(this.name) }}{{#if this.role}} · {{this.role}}{{/if}}"]
+{{/each}}
+{{/each}}
+```
+
+## WBS Gantt Chart (mermaid · dated)
+
+{{#if wbs_has_dates}}
+> Grouped by **{{ view_group_note }}**; each package positioned by absolute start/end dates (no mixed `after` dependency chains, keeps syntax valid and readable).
 
 ```mermaid
 gantt
-    title {{ project.name }} · WBS 甘特图（{{ view_label }}）
+    title {{ project.name }} · WBS Gantt ({{ view_label }})
     dateFormat YYYY-MM-DD
     axisFormat %Y-%m
     todayMarker stroke-width:2px,stroke:#e3000b
@@ -33,14 +49,18 @@ gantt
 {{/each}}
 ```
 
-> **依赖说明**：依赖网络由 `wbs[].dependsOn` 定义（一致性校验强制联网）。甘特图以绝对起止日期呈现各包位置；
-> 如需在图中绘制依赖箭头，可在 `wbs_groups` 任务行追加 `after <id>`（须保证被引用 id 已作为任务渲染）。
+> **Dependencies**: the dependency network is defined by `wbs[].dependsOn` (consistency check enforces connectivity). The Gantt shows each package's position by absolute dates;
+> to draw dependency arrows in the chart, append `after <id>` to the `wbs_groups` task line (the referenced id must already be rendered as a task).
+{{else}}
+> This WBS carries only **effort (duration/estimate)** with no start/end dates, so the dated Gantt is omitted (avoids mermaid `invalid date`).
+> The canonical WBS artifact is the **WBS decomposition tree** (hierarchy graph) above. The **dated Gantt belongs to the schedule plan** — once dates are added to packages, `schedule_gantt.md` renders it, and this chart reappears automatically when `wbs_has_dates=true`.
+{{/if}}
 >
-> **角色 / 领域 / 颗粒度**：每个**领域活动**工作包须标注 `role`（产出角色，见 `references/expert-roles.md`）
-> 与 `domain`（子领域）；叶子包 `estimate` 不得超过颗粒度阈值（默认 10 人天，见 `control.granularity_threshold`），
-> 超过者须由对应领域专家拆解为其下叶子包（ID 前缀如 `SOW1.1`）。粗粒度 SOW 级包未经专家拆解不得作为交付。
+> **Role / domain / granularity**: every **domain-activity** package must carry `role` (producing role, see `references/expert-roles.md`)
+> and `domain` (sub-domain); a leaf package's `estimate` must not exceed the granularity threshold (default 10 person-days, see `control.granularity_threshold`);
+> anything over must be decomposed by the relevant domain expert into leaf packages (id prefix like `SOW1.1`). A coarse SOW-level package must not be delivered without expert decomposition.
 >
-> **两层颗粒度**：项目群 `project.type: program` 的 WBS 工件仅含里程碑级行（`tier: program`）；
-> 各组件 `project.type: project` 持有最细叶子包（`tier: component`）。`build_wbs.py --view` 据此过滤。
+> **Two-tier granularity**: a program's `project.type: program` WBS artifact contains milestone-level rows only (`tier: program`);
+> each component's `project.type: project` holds the finest leaf packages (`tier: component`). `build_wbs.py --view` filters accordingly.
 
-_生成于 PM Master · WBS 模板（两层颗粒度 · 表格 + mermaid 甘特双视图）_
+_Generated by PM Master · WBS template (two-tier granularity · table + mermaid Gantt dual view)_

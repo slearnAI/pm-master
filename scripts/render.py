@@ -77,6 +77,13 @@ def _resolve_or_literal(tok, ctx):
 
 def _eval(expr, ctx):
     expr = expr.strip()
+    # 支持 #if 内的辅助函数调用，如 (eq granularity "fortnight") / (sev_cell x y)
+    if expr.startswith('(') and expr.endswith(')'):
+        inner = expr[1:-1].strip()
+        if re.match(r'^\w+[(\s]', inner):
+            hres = _call_helper(inner, ctx)
+            if hres is not None:
+                return hres
     for op in ('==', '!='):
         if op in expr:
             left, right = expr.split(op, 1)
@@ -184,10 +191,15 @@ def _gantt_name(val):
     """甘特图任务显示名（':' 分隔符之前的文本）。
 
     在 gantt 行 `任务名 :taskId, start, end` 中，任务名里的冒号会破坏分隔，
-    故把 ':' 换成全角 '：'；并复用标签安全处理。
+    故把 ':' 换成全角 '：'；`&` 是 mermaid 多任务同行运算符，需转义，
+    否则未转义的 '&' 会让解析器把后续 token 当作无日期任务 -> 'undefined.endTime' 报错。
+    同时复用标签安全处理（引号/空白）。
     """
     s = _mermaid_label(val)
-    s = s.replace(':', '：')
+    # gantt 中 ':' 是任务/ID 分隔符，'&' 是多任务同行运算符；
+    # 两者都会破坏标签，必须转义。'&' 换成全角 '＆'(U+FF06)，
+    # 视觉仍是 & 但不会被当作运算符，避免 'undefined.endTime' 报错。
+    s = s.replace(':', '：').replace('&', '＆')
     return s
 
 
@@ -221,6 +233,20 @@ def _severity_icon(val):
     return '⚪'
 
 
+def _assume_text(val):
+    """RAID 假设渲染助手：兼容 dict({text: ...}) 与纯字符串两种写法。
+
+    模板里用 {{ assume_text(this) }} 渲染假设条目，避免 dict 被 str() 成
+    "{'text': '...'}" 这类 JSON 字面量而破坏文档可读性。
+    例：{'text': '<=1600 源表'} -> '<=1600 源表'；'<=1600 源表' -> '<=1600 源表'。
+    """
+    if isinstance(val, dict):
+        return str(val.get('text', ''))
+    if val is None:
+        return ''
+    return str(val)
+
+
 def _slug_call(tag, ctx):
     """兼容旧写法：slug(x) / slug x 等价于 mid(x)（mermaid 安全 ID）。"""
     m = re.match(r'^\s*slug\s*\((.*)\)\s*$', tag, re.S)
@@ -229,6 +255,38 @@ def _slug_call(tag, ctx):
     if not m:
         return None
     return _mermaid_id(_resolve_or_literal(m.group(1).strip(), ctx))
+
+
+def _severity_band_from_score(score):
+    """按 5×5 校准矩阵把 score 映射为颜色 emoji（缺 severity 时回退用）。
+
+    色带：🟢 绿 1–4 ｜ 🟡 黄 5–9 ｜ 🟠 橙 10–15 ｜ 🔴 红 16–25。
+    无法解析 -> ⚪。
+    """
+    if score is None:
+        return '⚪'
+    try:
+        sc = float(str(score).strip())
+    except (ValueError, AttributeError):
+        return '⚪'
+    if sc <= 4:
+        return '🟢'
+    if sc <= 9:
+        return '🟡'
+    if sc <= 15:
+        return '🟠'
+    return '🔴'
+
+
+def _severity_cell(sev, score=None):
+    """优先用 severity 显式色标，缺失时用 score 推导，保证色标永远显示。
+
+    用法：{{ sev_cell this.severity this.score }} -> 🔴
+    """
+    icon = _severity_icon(sev)
+    if icon and icon != '⚪':
+        return icon
+    return _severity_band_from_score(score)
 
 
 def _call_helper(tag, ctx):
@@ -248,12 +306,54 @@ def _call_helper(tag, ctx):
             return _gantt_name(_resolve_or_literal(arg, ctx))
         if name in ('sev_icon', 'risk_icon'):
             return _severity_icon(_resolve_or_literal(arg, ctx))
+        if name in ('sev_cell', 'sev_band'):
+            # sev_cell(severity, score) / sev_band(score)  -- 支持逗号或空格分隔
+            inner = re.match(r'^\s*(.*?)\s*[,\s]\s*(.*)\s*$', arg, re.S)
+            if name == 'sev_band':
+                return _severity_band_from_score(_resolve_or_literal(arg, ctx))
+            if inner and inner.group(2).strip():
+                a = _resolve_or_literal(inner.group(1).strip(), ctx)
+                b = _resolve_or_literal(inner.group(2).strip(), ctx)
+                return _severity_cell(a, b)
+            return _severity_cell(_resolve_or_literal(arg, ctx), None)
         if name == 'join':
             return _join_call(tag, ctx)
+        if name == 'assume_text':
+            return _assume_text(_resolve_or_literal(arg, ctx))
+        if name == 'eq':
+            # eq(a, b) 或 eq a b -> 相等返回 b 的字面值（truthy），否则 ''（falsy），供 {{#if (eq ..)}} 使用
+            a_raw, b_raw = None, None
+            inner = re.match(r'^\s*(.*?)\s*,\s*(.*)\s*$', arg, re.S)
+            if inner:
+                a_raw, b_raw = inner.group(1).strip(), inner.group(2).strip()
+            else:
+                # 空格分隔（兼容引号包裹字面量）：eq granularity "fortnight"
+                m2 = re.match(r'^\s*(\S+)\s+"([^"]*)"\s*$', arg, re.S)
+                if m2:
+                    a_raw, b_raw = m2.group(1).strip(), '"' + m2.group(2) + '"'
+                else:
+                    parts = arg.split(None, 1)
+                    if len(parts) == 2:
+                        a_raw, b_raw = parts[0].strip(), parts[1].strip()
+            if a_raw is not None and b_raw is not None:
+                a = _resolve_or_literal(a_raw, ctx)
+                b = _resolve_or_literal(b_raw, ctx)
+                return b if str(a) == str(b) else ''
+            return ''
         return None
-    # 兼容文档示例中的无括号 slug 写法：{{ slug this.from }}
+    # 兼容文档示例中的无括号写法：{{ slug this.from }} 与 {{ eq a b }}
     if tag.startswith('slug '):
         return _slug_call(tag, ctx)
+    if tag.startswith('eq '):
+        inner = tag[3:].strip()
+        # 转成 eq(a, b) 形式重新进入解析（支持引号字面量）
+        m2 = re.match(r'^(\S+)\s+"([^"]*)"\s*$', inner, re.S)
+        if m2:
+            return _call_helper('eq(%s, "%s")' % (m2.group(1), m2.group(2)), ctx)
+        parts = inner.split(None, 1)
+        if len(parts) == 2:
+            return _call_helper('eq(%s, %s)' % (parts[0], parts[1].strip('"')), ctx)
+        return ''
     return None
 
 

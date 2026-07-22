@@ -1,79 +1,124 @@
-# 阶段模块 · P0+P1 启动与规划（Initiation & Planning）
+# Phase Module · P0+P1 Initiation & Planning
 
-> 本模块覆盖生命周期最前端两个阶段的**活动、交付物、入口/出口准则与阶段门**。
-> 启动与规划耦合紧密（立项即定边界，规划即拆范围），合并为一个子模块；对应的硬门是
-> **G1→2 规划→执行控制门**（见 `references/lifecycle.md §5/§6` 与 `scripts/gate_engine.py`）。
-> 状态机落位：`启动`/`规划` ⊆ `planning`（经 `review` 评审后 `baseline.py --freeze` 进入 `baselined`）。
+> This module covers the activities, deliverables, entry/exit criteria, and phase gates for the two front-end lifecycle stages.
+> Initiation and planning are tightly coupled (initiation sets the boundaries; planning decomposes the scope), so they are merged into one submodule; its hard gate is the
+> **G1→2 Planning→Execution control gate** (see `references/lifecycle.md §5/§6` and `scripts/gate_engine.py`).
+> State-machine placement: `initiation`/`planning` ⊆ `planning` (after `review` assessment, `baseline.py --freeze` enters `baselined`).
+>
+> **Methodology-agnostic skeleton**: the P0→P1 *sequence* below applies to **every** methodology (waterfall / agile / iteration / hybrid / program). Only the *shape* of the estimate base and the schedule artifact varies by methodology (see §2). The baseline freeze (`baseline.py --freeze`) is mandatory for waterfall/hybrid; agile/iteration use backlog + sprint/iteration plan instead (no baseline freeze).
+>
+> **Bottom-up (Iron Rule #11)**: for a **program**, every artifact is authored at the sub-project (SOW) level; the program `project.yaml` holds only the charter + `program.projects[]` index + milestone-level rows. The program view is a read-only rollup (`references/operation-model.md`).
 
-## 1. 目标
+## 1. Objectives
 
-- **启动**：明确业务必要性、目标与边界，落实 sponsor 与 PM，获得立项。
-- **规划**：把目标拆成可交付的范围、排期、估算、风险与治理基线，形成可基线化的计划。
+- **Initiation (P0)**: Clarify business necessity, objectives, and boundaries; **decide program vs project and design the PM team**; build the single source of truth by **extracting SOW(s)** into a structured understanding; produce the **draft** charter (with embedded estimate-base sections) + stakeholder/comm/RAID. **No WBS is built in P0** — WBS is a P1 activity derived from the draft charter.
+- **Planning (P1)**: Decompose the draft charter's estimate base into a deliverable WBS/schedule/risk/quality baseline, **finalize the charter**, and pass the G1→2 gate into execution.
 
-## 2. 关键活动（方法论适配）
+## 1.1 P0 / P1 Step Sequence (methodology-agnostic)
 
-| 方法论 | 启动活动 | 规划活动 |
-|------|----------|----------|
-| 通用 | 立项、干系人识别、RACI、沟通计划、范围/目标 | WBS/Backlog 拆解、排期、风险/RAID、里程碑 |
-| waterfall | 业务必要性 + 预算 + sponsor 确认 | 需求规格、WBS（依赖网络+DoD）、甘特、质量计划、阶段门清单 |
-| agile | 章程（轻量）、产品愿景 | 产品 Backlog、Sprint 计划框架、DoD、燃尽基线 |
-| iteration | 章程、迭代节奏约定 | 迭代计划、迭代 Backlog、评审/复盘节奏 |
-| hybrid | 治理地图（宏/微边界 + 门 + 决策人） | 宏层路线图 + 每宏波次≥1 个微层计划（sprint/backlog/iteration） |
-| 项目群 | 组合章程、收益蓝图、组件边界 | 组合路线图、组件依赖图、收益实现计划、变更控制 CCB |
+### P0 — Initiation: assignment → single source of truth (DRAFT charter)
 
-> 领域活动（技术领域工作包）必须由对应**领域专家**拆解到叶子包（≤ `control.granularity_threshold` 人天），
-> 经 `scripts/dispatch.py` 调度；粗粒度 SOW 级 WBS 不得作为交付。详见 `references/expert-roles.md`。
+- **P0.0 Classify & design PM team**
+  - Input: assignment package (one or more SOWs/contracts, sponsor, expected benefits).
+  - Decide `type`: single coherent scope + single contract + single delivery owner → **project**; ≥2 interrelated SOWs / multiple contracts / shared benefits & dependencies → **program**.
+  - If program: design PM team = Program PM (master/orchestrator) + per-SOW PMs (sub-project owners), each a dispatched agent per `SKILL.md §0`.
+  - Output: **draft** `project_charter` carrying `type` + governance model only (plan sections not yet present).
 
-## 3. 必产出交付物（模板）
+- **P0.1 Extract SOW(s) → structured understanding (no WBS here)**
+  - Each SOW: SOW-parsing playbook (`references/sow-parsing-playbook.md`) → `(a)` text extraction of the four sections (billing / scope boundary / entry conditions / assumptions) + `(c)` guided Q&A on ambiguity → `spec` JSON.
+  - **Project**: `spec` held as the project's single-source-of-truth input (feeds P0.2 + P1).
+  - **Program**: init each sub-project **first** (`init_project.py --parent <prog> --sow <id> --slug <slug>` → each SOW PM owns `subprojects/<slug>/project.yaml`); **then** backfill master `project.yaml` with `program.projects[]` index + milestone-level rows only. Leaf WBS is **never** written into the master (consistent with `references/operation-model.md`: sub-project = sole source of truth; master = read-only rollup).
 
-- **标准启动套件（任何项目）**：`common/project_charter` + `common/stakeholder_register` + `common/raci` + `common/communication_plan`
-- **范围/计划**：`common/wbs`（或 agile `product_backlog` / iteration `iteration_plan`）+ `common/risk_register` + `common/raid_log`
-- **waterfall/hybrid 专属**：`waterfall/requirements_spec` + `waterfall/wbs`（由 `build_wbs.py` 渲染） + `waterfall/schedule_gantt`（由 `build_schedule.py` 从 WBS 正向排程生成，**P0/P1 主要排期交付物**） + `waterfall/quality_plan` + `waterfall/stage_gate_review`（计划基线门清单）
-- **每 SOW 级包**：`common/sow_kickoff`（由 `build_sow_kickoff.py` 为**每个 SOW 级 summary 包**生成 per-SOW 启动会工件，对齐范围/交付物/责任人/首批行动，规划期必跑）
-- **项目群专属**：`program/program_charter` + `program/portfolio_dashboard` + `program/dependency_map` + `program/benefits_realization` + `common/change_log`
+- **P0.2 Foundational artifacts / estimate base → still DRAFT charter**
+  - From `spec`, render:
+    - `project_charter` — still **draft**; the estimate base lives as **sections inside this charter** (not a separate document):
+      - Scope (in-scope / out-of-scope)
+      - Delivery milestones
+      - Payment milestones / schedule (billing events + fees; methodology-shaped: waterfall waves / agile releases [pure agile marks "N/A — internal release cadence"] / iteration plans / T&M capped packages / hybrid macro→micro)
+      - Assumptions, Constraints, Dependencies
+    - `stakeholder_register`, `communication_plan`
+    - `raid_log` + `risk_register` — **seeded** from the SOW's assumptions/constraints/dependencies (continuously maintained from here; not a blank draft).
+  - The draft charter (+ embedded estimate base) is the single source of truth handed to P1.
 
-## 4. 入口准则（Entry）
+- **P0.3 Hand off draft charter (estimate base) → P1.**
 
-- `project.yaml` 已存在（`init_project.py` 初始化）；或本模块即触发初始化。
-- 明确 `project.type` / `methodology` / `framework`（决定后续模板与节奏）。
+### P1 — Planning: estimate base → baselinable plan → FINAL charter + gate
 
-## 5. 出口准则（Exit · 可进入执行）
+- `dispatch.py` decomposes scope into leaf WBS packages (≤ `control.granularity_threshold` person-days) via domain experts — **WBS is built here, derived from the P0.2 draft charter**, not from raw SOW text.
+- `build_schedule.py` → `schedule_gantt` (waterfall) / `sprint_plan` (agile) / `iteration_plan` (iteration) / `macro_micro_map` (hybrid).
+- 5×5 risk calibration; `quality_plan` (waterfall).
+- `consistency_check.py` exit 0.
+- `baseline.py --freeze` (waterfall/hybrid) → `baselined`.
+- **Charter finalized**: plan sections (WBS/schedule/risk/quality) appended/locked; the P0 draft becomes the **final** charter, now gate-ready.
+- `G1→2` control gate (`gate_engine.py --to 执行 --approve "<sponsor>"`) → `operational`.
 
-- 计划完整、估算齐全（`wbs[].estimate > 0`、agile/iteration backlog 有估算）。
-- 风险已按 5×5 校准（likelihood/impact/score/severity 一致）。
-- **一致性门禁 `consistency_check.py --project` exit 0**（无致命问题）。
-- waterfall/hybrid：**已 `baseline.py --freeze`** 冻结计划为基线（`baseline.file` 存在）。
-- 阶段门评审 `stage_gate_review`（Gate2 计划基线）给出"通过/有条件通过"结论。
+## 2. Key Activities (Methodology Adaptation)
 
-## 6. 阶段门审批（Gate · G1→2）
+> The P0/P1 *sequence* (§1.1) is unchanged across methodologies. The table below shows how each methodology **shapes the estimate base and the schedule artifact** produced in P0.2 / P1.
 
-- **门**：G1→2 规划→执行（控制门，强制串行，不可跳过）。
-- **审批人**：sponsor（必要时 + PM）。
-- **检查清单**：范围/估算/风险/依赖/质量基线逐项核验；计划基线完整性；一致性门禁结论。
-- **命令**（dry-run 先评估，再审批）：
+| Methodology | P0.2 estimate-base shape | P1 schedule artifact | Baseline freeze? |
+|------|----------|----------|----------|
+| Generic | charter scope/milestones/assumptions/constraints/deps | wbs/backlog + schedule | per chosen method |
+| waterfall | charter with **payment milestones** (billing waves + fees) | `waterfall/schedule_gantt` + `waterfall/wbs` | **yes** (`baseline.py --freeze`) |
+| agile | charter payment section = "N/A — internal release cadence" | `agile/sprint_plan` + `product_backlog` | no (backlog + sprint plan) |
+| iteration | charter payment section = iteration-based | `iteration/iteration_plan` + `iteration_backlog` | no (iteration plan) |
+| hybrid | macro roadmap (waterfall-style payment milestones) + micro plans | `macro_micro_map` + micro plan | macro yes / micro per method |
+| program | per-SOW estimate base in each sub-project; master = milestone index | per sub-project schedule; portfolio rollup | per component method |
+
+> Domain activities (technical-domain work packages) must be decomposed to leaf packages (≤ `control.granularity_threshold` person-days) by the corresponding **domain expert**,
+> dispatched via `scripts/dispatch.py`; a coarse SOW-level WBS must not be treated as a deliverable. See `references/expert-roles.md` for details.
+
+## 3. Required Deliverables (Templates)
+
+- **Standard initiation kit (any project)**: `common/project_charter` (draft in P0, finalized in P1) + `common/stakeholder_register` + `common/raci` + `common/communication_plan`
+- **Estimate base**: sections **inside** `common/project_charter` (Scope / Delivery milestones / Payment milestones / Assumptions / Constraints / Dependencies) — not a standalone document.
+- **Scope/plan (P1)**: `common/wbs` (or agile `product_backlog` / iteration `iteration_plan`) + `common/risk_register` + `common/raid_log`
+- **waterfall/hybrid only**: `waterfall/requirements_spec` + `waterfall/wbs` (rendered by `build_wbs.py`) + `waterfall/schedule_gantt` (generated by `build_schedule.py` via forward scheduling from the WBS, the **primary P1 scheduling deliverable**) + `waterfall/quality_plan` + `waterfall/stage_gate_review` (planned baseline gate checklist)
+- **Per SOW-level package**: `common/sow_kickoff` (generated by `build_sow_kickoff.py` as a per-SOW kickoff artifact for **each SOW-level summary package**, aligning scope/deliverables/owners/first actions; must run during planning)
+- **Program only**: `program/program_charter` + `program/portfolio_dashboard` + `program/dependency_map` + `program/benefits_realization` + `common/change_log`
+
+## 4. Entry Criteria (Entry)
+
+- `project.yaml` already exists (initialized by `init_project.py`); or this module triggers initialization.
+- `project.type` / `methodology` / `framework` clearly defined (determines subsequent templates and cadence).
+
+## 5. Exit Criteria (Exit · Ready to Enter Execution)
+
+- Plan complete and estimates populated (`wbs[].estimate > 0`, agile/iteration backlog has estimates).
+- Risks calibrated on a 5×5 scale (likelihood/impact/score/severity consistent).
+- **Consistency gate `consistency_check.py --project` exits 0** (no fatal issues).
+- waterfall/hybrid: plan frozen as baseline via **`baseline.py --freeze`** (`baseline.file` exists).
+- Phase-gate review `stage_gate_review` (Gate2 plan baseline) yields a "pass / conditional pass" conclusion.
+
+## 6. Phase-Gate Approval (Gate · G1→2)
+
+- **Gate**: G1→2 Planning→Execution (control gate, mandatory sequential, cannot be skipped).
+- **Approver**: sponsor (with PM if necessary).
+- **Checklist**: Verify scope/estimates/risks/dependencies/quality baseline item by item; plan baseline completeness; consistency-gate conclusion.
+- **Commands** (run dry-run to assess first, then approve):
 
 ```bash
-SKILL_DIR=<本技能目录>
-# 评估能否进入执行（不改动状态）
+SKILL_DIR=<this skill directory>
+# Assess whether execution can be entered (does not change state)
 python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --to 执行
-# 审批通过：翻转 lifecycle_state → operational，phase → 执行，记录阶段门，产出评审报告
+# Approve: flip lifecycle_state → operational, phase → 执行, record phase gate, produce review report
 python3 $SKILL_DIR/scripts/gate_engine.py --project /workspace/<slug>/project.yaml --to 执行 --approve "张三(sponsor)"
 ```
 
-## 7. 推荐脚本
+## 7. Recommended Scripts
 
-- `init_project.py`：初始化 `project.yaml` 骨架。
-- `dispatch.py`：审计 WBS、特化推荐领域专家（多 Agent 第二层）。
-- `render.py`：渲染上述模板为 Markdown 交付物。
-- `build_wbs.py`：渲染 `plans/wbs.md`（两层颗粒度 WBS 视图，修掉 `wbs.md` 对 `build_wbs.py` 的悬空依赖）。
-- `build_schedule.py`：waterfall/hybrid 把 WBS 正向排程为排期计划（**P0/P1 主要交付物**，规划期必跑）：项目/默认 `plans/schedule_gantt.md`；项目群 `--level program` → `plans/schedule_program_gantt.md`（里程碑级 SOW 汇总包 + 阶段里程碑，聚焦项目群级规划，不展开叶子）；单 SOW `--sow <SOW_ID>` → `plans/<sow>/schedule_gantt.md`（该 SOW 自己的子计划）。
-- `build_sow_kickoff.py`：为每个 SOW 级包产出 `plans/<sow>/kickoff.md` per-SOW 启动会工件（与排期同处该 SOW 子计划文件夹，可独立执行、与父项目关联，规划期必跑）。
-- `schedule_health.py`：waterfall/hybrid 算关键路径/浮动（规划期必跑）。
-- `consistency_check.py`：交付前质量门（exit 1 = 阻断）。
-- `baseline.py --freeze`：冻结计划为基线（waterfall/hybrid 进执行前必跑）。
-- `gate_engine.py --to 执行`：控制门评估/审批。
+- `init_project.py`: Initialize the `project.yaml` skeleton.
+- `dispatch.py`: Audit the WBS, recommend specialized domain experts (multi-Agent second layer).
+- `render.py`: Render the above templates into Markdown deliverables.
+- `build_wbs.py`: Render `plans/wbs.md` (two-level-granularity WBS view, fixing the dangling dependency of `wbs.md` on `build_wbs.py`).
+- `build_schedule.py`: waterfall/hybrid forward-schedules the WBS into a schedule plan (the **primary P1 deliverable**, must run during planning): project/default `plans/schedule_gantt.md`; program `--level program` → `plans/schedule_program_gantt.md` (milestone-level SOW rollup package + stage milestones, focused on program-level planning, no leaf expansion); single SOW `--sow <SOW_ID>` → `plans/<sow>/schedule_gantt.md` (that SOW's own sub-plan).
+- `build_sow_kickoff.py`: Produces `plans/<sow>/kickoff.md` per-SOW kickoff artifacts for each SOW-level package (colocated with the schedule in that SOW sub-plan folder, independently executable and linked to the parent project; must run during planning).
+- `schedule_health.py`: waterfall/hybrid computes critical path/float (must run during planning).
+- `consistency_check.py`: Pre-delivery quality gate (exit 1 = blocking).
+- `baseline.py --freeze`: Freeze plan as baseline (must run for waterfall/hybrid before entering execution).
+- `gate_engine.py --to 执行`: Control-gate assessment/approval.
 
-## 8. 衔接
+## 8. Handoff
 
-- 出口经 G1→2 进入 **P2 执行**（operational）；P3 监控在 operational 内并发启动。
-- 若评审不通过，退回 `planning` 修订后重评（状态机 `review → planning` 允许回退）。
+- Exit via G1→2 into **P2 Execution** (operational); P3 Monitoring starts concurrently within operational.
+- If the review fails, return to `planning` for revision and re-review (state machine allows `review → planning` rollback).

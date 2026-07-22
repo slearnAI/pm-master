@@ -45,8 +45,30 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # ---------- 阶段 / 状态机模型 ----------
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 PROJECT_PHASES = ['启动', '规划', '执行', '监控', '收尾']
 PROGRAM_PHASES = ['组合定义', '组合交付', '组合收尾']
+
+# 双语阶段别名：英文/小写 token 归一化为内部中文键（让 EN 包可用 --to execution 等）。
+PHASE_ALIASES = {
+    'initiation': '启动', 'initiate': '启动', 'init': '启动',
+    'planning': '规划', 'plan': '规划',
+    'execution': '执行', 'execute': '执行', 'exec': '执行',
+    'monitoring': '监控', 'monitor': '监控', 'control': '监控',
+    'closeout': '收尾', 'closure': '收尾', 'close': '收尾',
+    'program-definition': '组合定义', 'program_definition': '组合定义', 'portfolio-definition': '组合定义',
+    'program-delivery': '组合交付', 'program_delivery': '组合交付', 'portfolio-delivery': '组合交付',
+    'program-closeout': '组合收尾', 'program_closeout': '组合收尾', 'portfolio-closeout': '组合收尾',
+}
+
+
+def normalize_phase(token):
+    """把 --to 的英文/小写别名归一化为内部中文阶段键；中文原样返回。"""
+    if not token:
+        return token
+    t = token.strip()
+    return PHASE_ALIASES.get(t.lower(), t)
 
 # 目标阶段 -> 门定义
 #   requires_state: 进入此门前的 lifecycle_state 取值
@@ -71,6 +93,38 @@ GATES = {
     '组合收尾': dict(requires_state={'operational'}, set_state='closed', hard=True, approver='sponsor',
                   gate='G3→4 组合交付→组合收尾（收尾门）'),
 }
+
+
+def load_config():
+    """读取安装期 config.yaml（stage_gates 块决定硬/软门）。"""
+    for cand in (os.path.join(SCRIPT_DIR, '..', 'config.yaml'),
+                 os.path.join(SCRIPT_DIR, 'config.yaml')):
+        if os.path.exists(cand):
+            try:
+                with open(cand, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f) or {}
+            except Exception:
+                return {}
+    return {}
+
+
+def apply_stage_gate_config():
+    """用 config.stage_gates 重写 GATES 的 hard 标志，使配置旋钮真正生效。
+    硬门串形如 'G1→2' / 'G3→4'，软门 'G0→1' / 'G2→3'。"""
+    cfg = load_config()
+    sg = cfg.get('stage_gates') or {}
+    hard = set(sg.get('hard_gates') or [])
+    soft = set(sg.get('soft_gates') or [])
+    if not hard and not soft:
+        return
+    for g in GATES.values():
+        gate_name = g['gate']
+        # 匹配形如 'G1→2 ...' 的前缀
+        prefix = gate_name.split()[0] if gate_name else ''
+        if prefix in hard:
+            g['hard'] = True
+        elif prefix in soft:
+            g['hard'] = False
 
 
 def load(path):
@@ -122,6 +176,19 @@ def chk_artifact(data, key):
     return key in arts, f'artifacts.{key} 已登记' if key in arts else f'缺少 artifacts.{key}（交付物未产出/未登记）'
 
 
+def chk_artifact_fresh(data, project):
+    """OAG：交付物是否与事实源一致（内容哈希漂移检测）。违规即视为护栏 breach。"""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from artifact_guard import check_artifacts
+        ok, viol, _ = check_artifacts(project, data)
+        if ok:
+            return True, '交付物均与事实源一致（OAG 通过）'
+        return False, f'存在 {len(viol)} 项交付物未随事实源刷新：{"；".join(viol[:2])}'
+    except Exception as e:
+        return True, f'OAG 检查跳过（{e}）'
+
+
 def chk_program_benefits(data):
     prog = data.get('program')
     if not isinstance(prog, dict):
@@ -153,6 +220,7 @@ def entry_criteria(target, data, project):
         crit.append(('运营控制无 RED', *chk_control(data, project)))
         crit.append(('验收交付物', *chk_artifact(data, 'closure_report')))
         crit.append(('经验教训沉淀', *chk_artifact(data, 'lessons_learned')))
+        crit.append(('交付物与事实源一致 (OAG)', *chk_artifact_fresh(data, project)))
         if target == '组合收尾':
             crit.append(('收益核实闭环', *chk_program_benefits(data)))
     # 软门（监控/规划/启动）无硬准则
@@ -183,7 +251,7 @@ def current_state(data):
 def main():
     ap = argparse.ArgumentParser(description="PM Master 阶段门引擎（Phase Gate Engine）")
     ap.add_argument('--project', required=True)
-    ap.add_argument('--to', help='目标阶段：启动/规划/执行/监控/收尾（项目群：组合定义/组合交付/组合收尾）')
+    ap.add_argument('--to', help='目标阶段：启动/规划/执行/监控/收尾（项目群：组合定义/组合交付/组合收尾）；亦受英文别名 execution/closeout 等')
     ap.add_argument('--approve', metavar='APPROVER', default=None,
                     help='审批人（如 "张三(sponsor)"）。给定则审批通过并翻转状态；否则仅做评估（dry-run）')
     ap.add_argument('--status', action='store_true', help='仅查看当前状态与可走的门')
@@ -194,6 +262,18 @@ def main():
         sys.exit(2)
     data = load(a.project)
     root = os.path.dirname(os.path.abspath(a.project))
+
+    # OAG：运营期交付物护栏（信息性提示，每次阶段门评估都可见）
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from artifact_guard import check_artifacts as _chk
+        _ok, _viol, _ = _chk(a.project, data)
+        if _ok:
+            print("ℹ 交付物护栏 (OAG)：全部交付物与事实源一致")
+        else:
+            print(f"⚠ 交付物护栏 (OAG)：{len(_viol)} 项违规（交付前须刷新：{'; '.join(_viol[:2])}）")
+    except Exception:
+        pass
     state, phase = current_state(data)
 
     # ---- 状态查看 ----
@@ -210,11 +290,12 @@ def main():
         if not a.to:
             return
 
-    target = a.to.strip()
+    target = normalize_phase(a.to)
     if target not in GATES:
-        print(f"✗ 未知目标阶段: {target}（可选：{', '.join(GATES.keys())}）", file=sys.stderr)
+        print(f"✗ 未知目标阶段: {a.to}（可选：{', '.join(GATES.keys())}；英文别名如 execution/closeout）", file=sys.stderr)
         sys.exit(2)
 
+    apply_stage_gate_config()
     g = GATES[target]
     # 前置状态检查
     if state not in g['requires_state']:

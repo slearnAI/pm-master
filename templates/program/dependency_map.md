@@ -1,8 +1,8 @@
-# 依赖图 · {{ project.name }}
+# Dependency Map · {{ project.name }}
 
-> 梳理组件/团队间的依赖关系与阻塞情况，提前识别交付风险。
+> Maps out dependencies and blockers between components/teams to identify delivery risks early.
 
-## 依赖关系图
+## Dependency Diagram
 
 ```mermaid
 flowchart LR
@@ -11,16 +11,16 @@ flowchart LR
 {{/each}}
 ```
 
-## 依赖清单
-| ID | 来源 | 目标 | 类型 | 状态 | 是否阻塞 |
+## Dependency List
+| ID | From | To | Type | Status | Blocker |
 |----|------|------|------|------|----------|
 {{#each dependencies}}
 | {{this.id}} | {{this.from}} | {{this.to}} | {{this.type}} | {{this.status}} | {{this.blocker}} |
 {{/each}}
 
-## 说明
-- **类型**：接口 / 数据 / 资源 / 决策 等。
-- **状态**：规划中 / 进行中 / 已完成 / 已失效。
-- **是否阻塞**：是 / 否。
+## Notes
+- **Type**: Interface / Data / Resource / Decision, etc.
+- **Status**: Planning / In Progress / Completed / Obsolete.
+- **Blocker**: Yes / No.
 
-> 提示：存在阻塞的依赖须指定缓解措施与责任人，纳入风险跟踪。
+> Tip: Any blocking dependency must have a mitigation and an owner assigned, and be brought into risk tracking.

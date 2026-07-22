@@ -1,64 +1,128 @@
-# 项目群（Program）管理
+# Program Management
 
-## 是什么
-项目群 = 为达成共同战略收益而**集中管理**的一组相互关联的项目/组件。与"项目组合(Portfolio)"
-（按优先级投资）不同，项目群强调**依赖协同与收益实现**。
+## What It Is
+A program = a group of interrelated projects/components **managed together** to achieve common strategic benefits. Unlike a "Portfolio"
+(invested by priority), a program emphasizes **dependency coordination and benefits realization**.
 
-> 触发：用户说"项目群/组合/多个关联项目一起管/跨部门大计划" → `init_project.py ... --type program`。
+> Trigger: the user says "program/portfolio/manage multiple related projects together/large cross-department plan" → `init_project.py ... --type program`.
 
-## 治理模型
-- **治理委员会**：sponsor + 各组件 PM + PMO，定期组合评审。
-- **三层视角**：战略收益层（program_charter / benefits_realization）→ 协同层（dependency_map / portfolio_dashboard）→ 组件层（各项目自管）。
-- **决策**：新增/终止组件、资源再分配、跨组件依赖仲裁。
+## Governance Model
+- **Governance board**: sponsor + each component PM + PMO, periodic portfolio reviews.
+- **Three-level view**: strategic-benefits level (program_charter / benefits_realization) → coordination level (dependency_map / portfolio_dashboard) → component level (each project self-managed).
+- **Decisions**: add/terminate components, resource reallocation, cross-component dependency arbitration.
 
-## 核心工件（项目群专属模板）
-- `templates/program/program_charter.md`：组合愿景、目标、范围、治理、收益目标
-- `templates/program/portfolio_dashboard.md`：各组件健康度红黄绿汇总看板
-- `templates/program/dependency_map.md`：跨组件依赖与阻塞
-- `templates/program/benefits_realization.md`：收益登记、衡量口径、实现跟踪
+## Core Artifacts (program-specific templates)
+- `templates/program/program_charter.md`: portfolio vision, goals, scope, governance, benefit targets, **contract boundaries & subcontracting (Contract/Extract/SOW)**
+- `templates/program/portfolio_dashboard.md`: red/yellow/green health rollup dashboard of all components
+- `templates/program/dependency_map.md`: cross-component dependencies and blockers
+- `templates/program/benefits_realization.md`: benefit register, measurement definitions, realization tracking
 
-## 与单项目的区别（主控要记住）
-| 维度 | 项目 | 项目群 |
+## Contract / Extract / SOW Data Model (written to `project.yaml.program`)
+
+Program governance must clarify the "build in-house vs outsource" boundary. Three new mapping tables:
+
+- `program.contracts[]`: external contract summary. Fields `code / type / scope / vendor / status / sow`.
+- `program.extracts[]`: Extract (carved-out outsourcable scope). Fields `id / scope / rationale / mode(build|outsource) / contract / note`.
+- `program.sow_map[]`: SOW ↔ contract ↔ component mapping. Fields `sow / name / contract / component / milestone / status`.
+
+Constraints (enforced by consistency check):
+1. `sow_map[].sow` must correspond to a `tier: program` (or `summary: true`) summary package in `wbs` — otherwise contract-boundary drift.
+2. An `extracts[].mode` marked `outsource` must bind a `contract` (non-empty), otherwise the Extract has no contract basis.
+3. `contracts[].sow` and its `sow_map` entries must cross-reference consistently.
+4. `sows[].fee` is required and must not be `(TBD)`/blank; when unlocked, write `TBC — reason`. `consistency_check.py` flags violations.
+
+> Maintenance: when component decomposition writes back `wbs` (via `sync_wbs.py`), also `project_state.py set program.sow_map[?] ...`;
+> or fill the three tables directly in the `program_charter` render data YAML and render with `render.py`.
+
+## Difference from a Single Project (the master must remember)
+| Dimension | Project | Program |
 |------|------|--------|
-| 目标 | 交付具体成果 | 实现战略收益 |
-| 管理重心 | 范围/进度/成本 | 依赖/协同/收益 |
-| 产物重点 | 章程/WBS/排期/风险 | 组合章程/看板/依赖图/收益 |
-| 风险 | 项目级 | 跨组件依赖阻塞、收益落空 |
+| Goal | deliver a concrete outcome | realize strategic benefits |
+| Management focus | scope/schedule/cost | dependencies/coordination/benefits |
+| Artifact focus | charter/WBS/schedule/risk | portfolio charter/dashboard/dependency map/benefits |
+| Risk | project level | cross-component dependency blockers, benefits shortfall |
 
-## 关键指标
-- 组件健康度汇总（CPI/SPI 红黄绿）
-- 依赖阻塞数
-- 收益实现率（已核实 / 计划）
+## Key Metrics
+- Component health rollup (CPI/SPI red/yellow/green)
+- Dependency-blocker count
+- Benefits realization rate (verified / planned)
 
-## WBS 两层颗粒度约定（Two-Tier WBS）
+## Two-Tier WBS Granularity Convention (Two-Tier WBS)
 
-> 触发：用户要求"项目群层级 WBS 只到各 SOW 里程碑级，最细叶子包在组件层级"。
+> Trigger: the user requires "the program-level WBS only down to each SOW milestone level, with the finest leaf packages at the component level".
 
-- **项目群（program）WBS** = SOW 汇总包（id 无 `.` 或 `summary: true`）
-  **+ 每个 SOW / P0 的「阶段(phase) 里程碑汇总包」**（`milestone: true`, `tier: program`）。
-  **不展开叶子工作包**——项目群报告只看里程碑级颗粒度。
-- **组件（project）WBS** = 最细颗粒度的**叶子工作包**（`tier: component`, `component: <slug>`），
-  含领域专家拆解包。
+- **Program WBS** = SOW summary packages (id without `.` or `summary: true`)
+  **+ each SOW / P0's "phase milestone summary package"** (`milestone: true`, `tier: program`).
+  **Leaf work packages are not expanded**—program reports only see milestone-level granularity.
+- **Component (project) WBS** = the finest-grained **leaf work packages** (`tier: component`, `component: <slug>`),
+  including domain-expert decomposition packages.
 
-单一事实源实现（`project.yaml`）：
-- `scripts/rollup_program_wbs.py` 把叶子按阶段聚合为里程碑汇总包并打 `tier` 标签；
-  加 `--derive-actuals` 可把叶子实际% 按 `estimate` 加权汇总为里程碑实际%，写入 `actuals.wbs_progress`。
-- `build_wbs.py --view program|component` 据此过滤：program 视图只渲染 `tier != component`，
-  component 视图只渲染 `tier == component`（可 `--component <slug>` 进一步过滤）。
-- 模板 `templates/waterfall/wbs.md` 单输出同时支持两种视图（表格 + mermaid 甘特）。
+**Recommended three-level decomposition inside each SOW** (resolves the "too coarse / 4 packages × 1 role" complaint):
+1. SOW summary package (`tier: program`, `summary: true`, e.g. `SOW1`)
+2. Phase groups (`tier: component`, `summary: true`, e.g. `SOW1.1`–`SOW1.4`) — roll-up containers, **not** standalone SOWs (the kickoff engine only treats `tier: program` summaries as SOW-level, so phase groups will not spawn spurious kickoffs)
+3. **Fortnight leaf packages** (`tier: component`, ≤10 days each, e.g. `SOW1.1.1`–`SOW1.4.2`) — each independently billable/acceptable, each assigned a **distinct domain-expert role** inferred from the contract/SOW via `role_catalog.py` (e.g. `ba` / `solution-architect` / `etl-engineer` / `domain-sme` …), governed by `acceptance` / `dependsOn` / `owner`.
 
-聚合规则（里程碑汇总包）：`estimate` = 叶子之和；`start/end` = 叶子极值；`dependsOn` = 上一阶段里程碑；
-`owner` 继承 SOW 汇总；领域专家拆解产出叶子包、归属对应组件。
+Single-source-of-truth implementation (`project.yaml`):
+- `scripts/rollup_program_wbs.py` aggregates leaves by phase into milestone summary packages and tags them with `tier`;
+  adding `--derive-actuals` rolls up leaf actual % weighted by `estimate` into milestone actual %, written to `actuals.wbs_progress`.
+- `build_wbs.py --view program|component` filters accordingly: the program view renders only `tier != component`,
+  the component view renders only `tier == component` (can further filter with `--component <slug>`).
+- The template `templates/waterfall/wbs.md` supports both views in a single output (table + mermaid Gantt).
+- `build_schedule.py --granularity fortnight` produces a 2-week-bucketed plan (`Fortnight Plan` table + `section FNxx` Gantt) so leaf packages are tracked at fortnight granularity, not as one giant bar.
 
-## 控制报告 · 进度明细列化
+Aggregation rules (milestone summary package): `estimate` = sum of leaves; `start/end` = leaf extremes; `dependsOn` = previous phase's milestone;
+`owner` inherited from the SOW summary; domain experts produce leaf packages, attributed to the corresponding component.
 
-`control_engine.py` 的进度控制**不再**把"计划/实际/偏差/逾期"挤进同一长串，
-而是输出结构化 `schedule_table`：每个工作包 / 里程碑单列一行，分列 **计划% | 实际% | 偏差% | 状态**。
-项目群层级因 baseline.wbs 仅含里程碑汇总包，自然聚合为里程碑级明细；组件层级明细到叶子。
-偏差落后超阈值（`control.thresholds.schedule_slip_pct`，默认 15%）标黄/红，一眼定位滞后项。
+## Per-SOW Sub-Project (independent PM ownership)
 
-## 主控调度提示
-- 项目群启动用 **team** 模式派 `program-agent`（组合章程+看板）、`risk-agent`（组合风险）、
-  `dependency-agent`（依赖图）并行。
-- 组件层可各自用本技能独立管理，`program.projects[]` 记录组件清单与各自 methodology。
-- 详见 `references/agents.md` 与 `references/metrics.md`。
+> **Operating model (canonical, skill-level):** this is the standard bottom-up pattern. Components author their
+> own plan/status/RAID/change-control; the program level is a *read-only rollup* produced by script. Full rules
+> in `references/operation-model.md` (Iron Rule #11). Do **not** hand-maintain a parallel program RAID/status.
+
+- **Create**: `init_project.py "SOW1 …" --type project --methodology waterfall --parent <program.yaml> --sow SOW1 --slug sow1`
+  → creates `program/subprojects/sow1/project.yaml` (independent skeleton) and writes `program.projects[]` entry `{id, name, sow, slug, methodology, status, path}`.
+- **Linkage**: child `project.yaml` carries `parent: {project: '../../project.yaml', sow: SOW1}`; cross-SOW dependencies live in each sub-project's `raid.dependencies[]` (e.g. `SOW1 → SOW2` model prerequisite).
+- **Render**: `build_subproject.py --project subprojects/sow1/project.yaml` (or `--program <program.yaml> --sow SOW1`)
+  → renders `risks/raid_log.md`, `risks/risk_register.md`, `reports/status_report.md` from the sub-project's single source of truth, and writes their paths back to `artifacts`.
+- The program's `consistency_check.py` only flags **top-level** SOWs (`^SOW\d+$`) as orphans against `program.sow_map` — phase groups / leaf packages are intentionally excluded, so sub-project decomposition never triggers false drift warnings.
+
+### Rollup (program = read-only aggregate of sub-projects)
+After sub-projects are updated, the orchestrator refreshes the program view with the cross-file rollup:
+```
+python3 rollup_subprojects.py <program/project.yaml>
+  → leaf actuals (per sub-project) estimate-weighted into program milestone rows
+  → sub-project ev/ac summed into program ev/ac
+  → writes program.actuals.wbs_progress (milestone keys)
+python3 scripts/control_engine.py --project <program.yaml> --as-of <date>
+  → program-level health dashboard (CPI/SPI, risk drift, milestone slip, RAID issues, change volume)
+```
+The program `actuals`, RAID, and status are **derived** — never hand-edited. To correct a program number, fix the
+owning sub-project and re-run the rollup (see `references/operation-model.md` §4).
+
+## Billing-Milestone-Driven WBS Decomposition (expert convention for SOW parsing)
+
+> Trigger: a SOW's payment is gated on specific **deliverable sign-off / billing events** (not on elapsed time). The WBS MUST reflect the commercial wave structure, or the plan is "junior-level" and milestones won't appear.
+
+When parsing a SOW, the comprehension step is NOT optional — apply a chain-of-thought + critic review before writing WBS:
+
+1. **Extract the commercial structure first**: read the SOW's billing/fee section verbatim. Identify each *"<Deliverable> post sign-off"* (or equivalent) event and its fee. These become **milestone packages** (`milestone: true`) with a `billing: {event, fee_inr, currency, status}` block — they are the things to monitor and measure.
+2. **Map each billing milestone to a wave / workstream** in the SOW's scope section. Model each wave as a `summary` package containing its own domain-expert leaf buckets (the leaf roles are inferred from the SOW text via `role_catalog.py`), ending in that wave's sign-off milestone.
+3. **Sequence billing milestones** along the commercial cadence (sequential per-sign-off is the safe default for a single architecture team; overlap only if the SOW explicitly allows parallel source sets + SME availability for the whole project).
+4. **Non-billing deliverables** (e.g. a design document with no separate fee) are still deliverable milestones, but flag `fee_inr: 0` + `note: 交付物但非独立计费事件` so they aren't mistaken for revenue events.
+5. **Every leaf package ≤ 10 人天** (the control gate hard-fails otherwise): split logical/physical/S2T activities into ≤10-day expert buckets (e.g. `W1.2a` FSDM, `W1.2b` 客户系统A, `W1.3a` Core DDL, `W1.3b` Semantic DDL). Summary/milestone packages get a rolled-up `estimate` = sum of children; milestones carry a small positive sign-off effort.
+6. **Entry criteria / data-readiness gates** become explicit predecessor packages (e.g. `SOW1.0` 源就绪门) on the critical path — they are the biggest rework risk and must be visible.
+
+示例数据湖项目 SOW1 示例：4 个 Wave 设计文档建模为计费里程碑（示例金额，如 ₹XX.XM），按商业节奏顺序排程；另含一个数据归档设计文档交付里程碑（不计费）。排程渲染 FN01→FN20 双周视图，4 个计费里程碑均在关键路径上。
+
+## Control Report · Schedule Detail in Columns
+
+`control_engine.py`'s schedule control **no longer** crams "planned/actual/variance/overdue" into one long string,
+but outputs a structured `schedule_table`: each work package / milestone on its own row, with separate columns for **planned% | actual% | variance% | status**.
+At the program level, because baseline.wbs contains only milestone summary packages, it naturally aggregates to milestone-level detail; the component level details down to leaves.
+Variances lagging beyond the threshold (`control.thresholds.schedule_slip_pct`, default 15%) are marked yellow/red, locating laggards at a glance.
+
+## Master Dispatch Tips
+- Use **team** mode for program initiation, dispatching `program-agent` (portfolio charter+dashboard), `risk-agent` (portfolio risk),
+  and `dependency-agent` (dependency map) in parallel.
+- The component layer can each be managed independently with this skill; `program.projects[]` records the component list and each one's methodology.
+- See `references/agents.md` and `references/metrics.md` for details.

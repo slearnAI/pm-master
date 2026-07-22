@@ -1,28 +1,28 @@
-# Sprint 回顾 · {{ project.name }}
+# Sprint Retrospective · {{ project.name }}
 
-> 周期性复盘：沉淀经验、暴露问题、落实改进行动项。
+> Periodic retrospective: capture lessons, surface problems, and follow through on improvement action items.
 
-- **Sprint 编号**：{{ sprint.num }}
+- **Sprint Number**: {{ sprint.num }}
 
-## 做得好（Keep）
-> 本周期值得保持的做法。
+## What Went Well (Keep)
+> Practices worth keeping this period.
 
 {{#each retro.good}}
 - {{this}}
 {{/each}}
 
-## 待改进（Improve）
-> 本周期暴露的问题与改进机会。
+## To Improve (Improve)
+> Problems and improvement opportunities surfaced this period.
 
 {{#each retro.improve}}
 - {{this}}
 {{/each}}
 
-## 行动项（Action Items）
-| 行动 | 负责人 | 截止 |
+## Action Items
+| Action | Owner | Due |
 |------|--------|------|
 {{#each retro.actions}}
 | {{this.item}} | {{this.owner}} | {{this.due}} |
 {{/each}}
 
-> 提示：行动项须在下个 Sprint 计划会上跟踪闭环。
+> Tip: Action items must be tracked to closure at the next Sprint planning meeting.

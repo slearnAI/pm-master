@@ -1,192 +1,197 @@
-# PM Master · 完整使用文档
+# PM Master · Complete Usage Guide
 
-> 面向科技行业 PM 的「项目 + 项目群」管理技能。Builder 理念、可执行、内置模板库、支持多 Agent 调度，
-> 适配 **waterfall / agile / iteration / hybrid** 四种方法论。本文档是技能的**完整使用手册**。
-
----
-
-## 目录
-1. [快速开始](#1-快速开始)
-2. [能力地图](#2-能力地图)
-3. [核心概念](#3-核心概念)
-4. [端到端工作流（按场景）](#4-端到端工作流按场景)
-5. [多 Agent 调度详解](#5-多-agent-调度详解)
-6. [模板库总览](#6-模板库总览)
-7. [脚本速查](#7-脚本速查)
-8. [双轨产出（Markdown → DOCX）](#8-双轨产出markdown--docx)
-9. [指标口径](#9-指标口径)
-10. [扩展指南](#10-扩展指南)
-11. [常见问题 FAQ](#11-常见问题-faq)
-12. [完整示例：从 0 启动一个敏捷项目](#12-完整示例从-0-启动一个敏捷项目)
-13. [提示词示例库](#13-提示词示例库)
+> A "project + program" management skill for PMs in the tech industry. Builder-style, executable, with a
+> built-in template library and multi-agent dispatch support, adapting to four methodologies:
+> **waterfall / agile / iteration / hybrid**. This document is the skill's **complete user manual**.
 
 ---
 
-## 1. 快速开始
+## Table of Contents
+1. [Quick Start](#1-quick-start)
+2. [Capability Map](#2-capability-map)
+3. [Core Concepts](#3-core-concepts)
+4. [End-to-End Workflows (by scenario)](#4-end-to-end-workflows-by-scenario)
+5. [Multi-Agent Dispatch Explained](#5-multi-agent-dispatch-explained)
+6. [Template Library Overview](#6-template-library-overview)
+7. [Script Quick Reference](#7-script-quick-reference)
+8. [Dual-Track Output (Markdown → DOCX)](#8-dual-track-output-markdown--docx)
+9. [Metric Definitions](#9-metric-definitions)
+10. [Extension Guide](#10-extension-guide)
+11. [FAQ](#11-faq)
+12. [Full Example: Launch an Agile Project from Scratch](#12-full-example-launch-an-agile-project-from-scratch)
+13. [Prompt Example Library](#13-prompt-example-library)
 
-**启用**：把技能目录放在 CodeBuddy 的 `skills/` 下（本环境已位于 `/root/.codebuddy/skills/pm-master/`），
-技能随会话自动可用，无需额外安装。
+---
 
-**最小可用三步**：
+## 1. Quick Start
+
+**Enable**: place the skill directory under your agent's `skills/` folder (in this environment it lives at
+`/root/.codebuddy/skills/pm-master/`). The skill is available automatically per session, no extra install.
+
+**Minimum viable three steps**:
 
 ```bash
-# 1) 建工作区（单一事实源 project.yaml 在此生成）
-python3 <SKILL_DIR>/scripts/init_project.py "支付重构" --type project --methodology agile --framework scrum
+# 1) Create workspace (the single source of truth project.yaml is generated here)
+python3 <SKILL_DIR>/scripts/init_project.py "Payment Refactor" --type project --methodology agile --framework scrum
 
-# 2) 用模板产出一份风险登记册（先准备数据 yaml，再渲染）
+# 2) Produce a risk register from a template (prepare the data yaml, then render)
 python3 <SKILL_DIR>/scripts/render.py \
   --template <SKILL_DIR>/templates/common/risk_register.md \
-  --data risks.yaml --out /workspace/支付重构/risks/risk_register.md
+  --data risks.yaml --out /workspace/Payment Refactor/risks/risk_register.md
 
-# 3) 导出正式 Word 文档
-python3 <SKILL_DIR>/scripts/render_docx.py /workspace/支付重构/risks/risk_register.md
+# 3) Export a formal Word document
+python3 <SKILL_DIR>/scripts/render_docx.py /workspace/Payment Refactor/risks/risk_register.md
 ```
 
-> `<SKILL_DIR>` 指技能根目录，即包含 `SKILL.md` 的 `pm-master/`。
-> 自然语言触发更简单：直接对 Agent 说"用敏捷帮我启动支付重构项目"即可，不必手敲命令。
+> `<SKILL_DIR>` means the skill root, i.e. the `pm-master/` folder containing `SKILL.md`.
+> Natural-language triggering is simpler: just tell the agent "use agile to launch the Payment Refactor
+> project" — no need to type commands by hand.
 
 ---
 
-## 2. 能力地图
+## 2. Capability Map
 
-| 能力 | 说明 | 适用 |
-|------|------|------|
-| 项目启动 / 规划 | 章程、干系人、RACI、WBS、排期、风险、RAID | 任何方法论 |
-| 敏捷交付 | 产品 Backlog、Sprint 计划、DoD、燃尽、回顾 | agile |
-| 迭代交付 | 迭代计划 / Backlog / 评审 | iteration |
-| 瀑布交付 | 需求规格、WBS、甘特、阶段门、质量计划 | waterfall |
-| 混合治理 | 治理地图、宏微映射 | hybrid |
-| 项目群治理 | 组合章程、组合看板、依赖图、收益实现 | program |
-| 指标分析 | 挣值 EVM、排期关键路径、一致性校验 | 分析场景 |
-| 多 Agent 并行 | 组队产出互相独立的产物 | 复杂启动 / 评审 |
-| 双轨文档 | Markdown 源 → DOCX 正式件 | 交付 / 汇报 |
+| Capability | Description | Applies to |
+|------------|-------------|------------|
+| Project initiation / planning | charter, stakeholders, RACI, WBS, schedule, risk, RAID | any methodology |
+| Agile delivery | product backlog, sprint plan, DoD, burndown, retro | agile |
+| Iteration delivery | iteration plan / backlog / review | iteration |
+| Waterfall delivery | requirements spec, WBS, Gantt, stage gates, quality plan | waterfall |
+| Hybrid governance | governance map, macro/micro mapping | hybrid |
+| Program governance | program charter, portfolio dashboard, dependency map, benefits realization | program |
+| Metric analysis | earned value EVM, schedule critical path, consistency check | analysis scenarios |
+| Multi-agent parallel | team up to produce mutually independent deliverables | complex initiation / review |
+| Dual-track docs | Markdown source → DOCX formal artifact | delivery / reporting |
 
 ---
 
-## 3. 核心概念
+## 3. Core Concepts
 
-### 3.1 单一事实源 `project.yaml`
-每个项目一个 `project.yaml`，存在于项目工作区根目录（`/workspace/<slug>/project.yaml`）。
-主控 Agent 与所有子 Agent 都通过它读写，保证**状态一致、跨会话连续**。关键字段：
+### 3.1 Single source of truth `project.yaml`
+One `project.yaml` per project, at the project workspace root (`/workspace/<slug>/project.yaml`). The
+orchestrator agent and all sub-agents read/write through it, ensuring **consistent state and cross-session
+continuity**. Key fields:
 
 ```yaml
 project:   { id, name, type(project|program), methodology, framework(scrum|kanban),
             phase, status, start_date, target_end, objectives[], scope, out_of_scope, sponsor, pm, team[] }
 governance: { stage_gates[], cadence }
-artifacts:  { charter: path, wbs: path, ... }   # 产物文件路径索引
+artifacts:  { charter: path, wbs: path, ... }   # deliverable file-path index
 raid:       { risks[], assumptions[], issues[], dependencies[] }
 metrics:    { evm: {}, burndown[] }
-program:    { projects[], dependencies[], benefits[] }   # 仅 type=program
+program:    { projects[], dependencies[], benefits[] }   # only when type=program
 ```
 
-读写可用 `scripts/project_state.py`：`get <key>` / `set <key> <value>` / `show` / `exists` / `init`。
+Read/write via `scripts/project_state.py`: `get <key>` / `set <key> <value>` / `show` / `exists` / `init`.
 
-### 3.2 四维度分类（每次请求先判定）
-| 维度 | 取值 |
-|------|------|
-| `type` | project（项目） / program（项目群） |
+### 3.2 Four-dimension classification (decide first on every request)
+| Dimension | Values |
+|----------|--------|
+| `type` | project / program |
 | `methodology` | waterfall / agile / iteration / hybrid |
-| `phase` | 启动 / 规划 / 执行 / 监控 / 收尾（项目群另有组合阶段） |
-| `intent` | 规划 / 构建 / 汇报 / 分析 / 治理 |
+| `phase` | initiation / planning / execution / monitoring / closeout (programs have portfolio phases) |
+| `intent` | plan / build / report / analyze / govern |
 
-### 3.3 三种执行模式
-| 模式 | 何时用 | 做法 |
-|------|--------|------|
-| **direct** | 单产物 / 解释 / 微调 | 主控直接调脚本或模板完成 |
-| **team** | 多独立产物（如启动需章程+WBS+风险+RACI） | 并行派出专职子 Agent，汇总后一致性校验 |
-| **fork** | 需完整上下文接力（如"接着上次风险分析继续"） | 子 Agent 继承本会话全部上下文 |
-
----
-
-## 4. 端到端工作流（按场景）
-
-### 场景 A：敏捷项目启动（team 模式，组队并行）
-**你说**："用敏捷（Scrum）帮我启动『支付重构』项目"
-
-1. `init_project.py "支付重构" --type project --methodology agile --framework scrum`
-2. 分类 → `{project, agile, 启动, 构建}` → 选 **team** 模式
-3. 同一条消息并行派出三个子 Agent：
-   - `planner-agent` → 渲染 `agile/product_backlog.md`
-   - `risk-agent` → 渲染 `common/risk_register.md` + `common/raid_log.md`
-   - `stakeholder-agent` → 渲染 `common/stakeholder_register.md` + `common/raci.md`
-4. 主控汇总 → 跑 `consistency_check.py` → 通过 → `render_docx.py` 渲染
-5. 交付：产物清单 + 关键指标卡
-
-### 场景 B：瀑布项目规划
-**你说**："按瀑布帮我规划『核心系统升级』，出 WBS、排期和阶段门"
-
-1. `init_project.py "核心系统升级" --type project --methodology waterfall`
-2. 路由到 `references/methodology-waterfall.md`
-3. 渲染 `waterfall/wbs.md` → `waterfall/schedule_gantt.md` → `waterfall/stage_gate_review.md`
-4. 用 `schedule_health.py` 校验关键路径与依赖
-5. 更新 `project.yaml.artifacts`
-
-### 场景 C：阶段评审 / 状态汇报
-**你说**："生成本周状态报告，并算一下 EVM"
-
-1. 准备 `metrics.yaml`（pv/ev/ac/bac）
-2. `evm.py --data metrics.yaml` → 输出 CPI/SPI/EAC 与健康旗标
-3. 渲染 `common/status_report.md`（填入进展、偏差、风险、求助项）
-4. 可选：`render_docx.py` 导出给干系人
-
-### 场景 D：项目群治理
-**你说**："建立『数字化转型项目群』，做组合看板和跨项目依赖图"
-
-1. `init_project.py "数字化转型项目群" --type program --methodology hybrid`
-2. 路由到 `references/program-management.md`
-3. 并行产出 `program/program_charter.md`、`program/portfolio_dashboard.md`、
-   `program/dependency_map.md`、`program/benefits_realization.md`
-4. 回写 `project.yaml.program.*`
+### 3.3 Three execution modes
+| Mode | When | How |
+|------|------|-----|
+| **direct** | single deliverable / explanation / tweak | orchestrator directly runs scripts or templates |
+| **team** | multiple independent deliverables (e.g. initiation needs charter+WBS+risk+RACI) | parallel dedicated sub-agents, then consistency check after consolidation |
+| **fork** | needs full-context relay (e.g. "continue from last risk analysis") | sub-agent inherits this session's full context |
 
 ---
 
-## 5. 多 Agent 调度详解
+## 4. End-to-End Workflows (by scenario)
 
-### 5.1 决策树
+### Scenario A: Agile project launch (team mode, parallel)
+**You say**: "Use agile (Scrum) to launch the 'Payment Refactor' project"
+
+1. `init_project.py "Payment Refactor" --type project --methodology agile --framework scrum`
+2. Classify → `{project, agile, initiation, build}` → choose **team** mode
+3. In the same message, dispatch three sub-agents in parallel:
+   - `planner-agent` → render `agile/product_backlog.md`
+   - `risk-agent` → render `common/risk_register.md` + `common/raid_log.md`
+   - `stakeholder-agent` → render `common/stakeholder_register.md` + `common/raci.md`
+4. Orchestrator consolidates → run `consistency_check.py` → pass → `render_docx.py` renders
+5. Deliver: deliverable list + key metrics card
+
+### Scenario B: Waterfall project planning
+**You say**: "Plan 'Core System Upgrade' with waterfall; produce WBS, schedule and stage gates"
+
+1. `init_project.py "Core System Upgrade" --type project --methodology waterfall`
+2. Route to `references/methodology-waterfall.md`
+3. Render `waterfall/wbs.md` → `waterfall/schedule_gantt.md` → `waterfall/stage_gate_review.md`
+4. Validate critical path and dependencies with `schedule_health.py`
+5. Update `project.yaml.artifacts`
+
+### Scenario C: Stage-gate review / status report
+**You say**: "Generate this week's status report and compute EVM"
+
+1. Prepare `metrics.yaml` (pv/ev/ac/bac)
+2. `evm.py --data metrics.yaml` → outputs CPI/SPI/EAC and health flags
+3. Render `common/status_report.md` (fill progress, variance, risks, help-needed items)
+4. Optional: `render_docx.py` to export to stakeholders
+
+### Scenario D: Program governance
+**You say**: "Set up the 'Digital Transformation Program', with a portfolio dashboard and cross-project dependency map"
+
+1. `init_project.py "Digital Transformation Program" --type program --methodology hybrid`
+2. Route to `references/program-management.md`
+3. Produce in parallel `program/program_charter.md`, `program/portfolio_dashboard.md`,
+   `program/dependency_map.md`, `program/benefits_realization.md`
+4. Write back `project.yaml.program.*`
+
+---
+
+## 5. Multi-Agent Dispatch Explained
+
+### 5.1 Decision tree
 ```
-请求进来
- ├─ 单产物 / 解释 / 微调            ──► direct（主控直做）
- ├─ 多互相独立产物（量大）        ──► team（并行专职子 Agent）
- └─ 需完整上下文接力（"接着做"） ──► fork（继承会话上下文）
+request comes in
+ ├─ single deliverable / explanation / tweak      ──► direct (orchestrator does it)
+ ├─ multiple mutually independent deliverables    ──► team (parallel dedicated sub-agents)
+ └─ needs full-context relay ("continue")         ──► fork (inherit session context)
 ```
 
-### 5.2 六类专职子 Agent
-| 角色 | 主责产物 | 回写 |
-|------|----------|------|
-| planner-agent | WBS / 产品 Backlog / 迭代计划 | `artifacts.wbs` / `artifacts.backlog` |
-| scheduler-agent | 排期 / 甘特 | 排期 yaml + `schedule_health` |
-| risk-agent | 风险登记册 / RAID | `raid.risks[]`、`artifacts.risk` |
-| stakeholder-agent | 干系人 / RACI / 沟通计划 | `project.sponsor/pm/team` |
-| reporter-agent | 状态报告 / 复盘 / 收尾 | `metrics` |
-| program-agent | 组合章程 / 看板 / 依赖 / 收益 | `program.*` |
+### 5.2 Six dedicated sub-agent roles
+| Role | Main deliverables | Writes back |
+|------|------------------|-------------|
+| planner-agent | WBS / product backlog / iteration plan | `artifacts.wbs` / `artifacts.backlog` |
+| scheduler-agent | schedule / Gantt | schedule yaml + `schedule_health` |
+| risk-agent | risk register / RAID | `raid.risks[]`, `artifacts.risk` |
+| stakeholder-agent | stakeholders / RACI / communication plan | `project.sponsor/pm/team` |
+| reporter-agent | status report / retro / closeout | `metrics` |
+| program-agent | program charter / dashboard / dependency / benefits | `program.*` |
 
-> 子 Agent 不直接回复用户，只产出文件并向主控回报。完整 brief 模板见 `references/orchestration.md`。
+> Sub-agents do not reply to the user directly; they only produce files and report back to the orchestrator.
+> Full brief templates are in `references/orchestration.md`.
 
-### 5.3 并行组队示例 brief（给单个子 Agent）
+### 5.3 Parallel team brief example (for a single sub-agent)
 ```
-你是 PM Master 的【risk-agent】专职子 Agent。请独立产出以下 PM 产物，不要直接回复用户。
-## 输入
-- 项目事实源：/workspace/支付重构/project.yaml（先用 project_state.py 读取）
-- 模板：<SKILL_DIR>/templates/common/risk_register.md
-- 渲染引擎：<SKILL_DIR>/scripts/render.py
-## 任务
-1. 基于 project.yaml 与需求，整理数据写成 risks.yaml
-2. 运行 render.py 渲染到 /workspace/支付重构/risks/risk_register.md
-3. 把产物路径回写 project.yaml 的 artifacts.risk
-4. 简要回报：产出了什么、关键结论 3 条
-## 约束
-- 只产出你负责的产物；未知字段填"（待定）"并标注
-- 每条风险须有 owner 与 mitigation（一致性校验强制项）
+You are PM Master's [risk-agent] dedicated sub-agent. Produce the following PM deliverables independently;
+do not reply to the user directly.
+## Input
+- Project source of truth: /workspace/Payment Refactor/project.yaml (read it first via project_state.py)
+- Template: <SKILL_DIR>/templates/common/risk_register.md
+- Render engine: <SKILL_DIR>/scripts/render.py
+## Task
+1. Based on project.yaml and requirements, organize data into risks.yaml
+2. Run render.py to render to /workspace/Payment Refactor/risks/risk_register.md
+3. Write the deliverable path back to project.yaml artifacts.risk
+4. Briefly report: what was produced, 3 key findings
+## Constraints
+- Only produce deliverables you own; fill unknown fields with "(TBD)" and flag them
+- Every risk must have an owner and mitigation (consistency-check mandatory item)
 ```
 
 ---
 
-## 6. 模板库总览
+## 6. Template Library Overview
 
-共 **35 个可用模板** + 1 个共享片段 `_macros.md`，按目录组织：
+**35 usable templates** + 1 shared snippet `_macros.md`, organized by directory:
 
-| 目录 | 数量 | 模板 |
-|------|------|------|
+| Directory | Count | Templates |
+|-----------|-------|-----------|
 | `common/` | 16 | project_charter, stakeholder_register, raci, communication_plan, raid_log, risk_register, status_report, lessons_learned, closure_report, project_board, milestone_list, change_request, change_log, baseline_record, control_register, control_report |
 | `waterfall/` | 5 | requirements_spec, wbs, schedule_gantt, stage_gate_review, quality_plan |
 | `agile/` | 5 | product_backlog, sprint_plan, definition_of_done, burndown, retro |
@@ -194,139 +199,178 @@ program:    { projects[], dependencies[], benefits[] }   # 仅 type=program
 | `hybrid/` | 2 | hybrid_governance, macro_micro_map |
 | `program/` | 4 | program_charter, portfolio_dashboard, dependency_map, benefits_realization |
 
-每个模板的**数据键契约**见 `references/templates-index.md`（渲染所需 YAML 顶层键，新增模板请在此登记）。
+The **data-key contract** for each template is in `references/templates-index.md` (top-level YAML keys
+needed for rendering; register new templates there).
 
 ---
 
-## 7. 脚本速查
+## 7. Script Quick Reference
 
-所有脚本位于 `<SKILL_DIR>/scripts/`，用 `python3` 运行。
+All scripts live in `<SKILL_DIR>/scripts/`, run with `python3`.
 
-| 脚本 | 用途 | 命令示例 |
-|------|------|----------|
-| `init_project.py` | 建工作区 + project.yaml | `python3 init_project.py "项目名" --type project --methodology agile --framework scrum [--domain <领域> --product <产品>]` |
-| `render.py` | 模板 + 数据 → Markdown | `python3 render.py --template T --data D.yaml --out O.md` |
+| Script | Purpose | Example command |
+|--------|---------|-----------------|
+| `init_project.py` | create workspace + project.yaml | `python3 init_project.py "Project Name" --type project --methodology agile --framework scrum [--domain <domain> --product <product>]` |
+| `render.py` | template + data → Markdown | `python3 render.py --template T --data D.yaml --out O.md` |
 | `render_docx.py` | Markdown → DOCX | `python3 render_docx.py O.md [--out O.docx]` |
-| `evm.py` | 挣值分析 | `python3 evm.py --data metrics.yaml` |
-| `schedule_health.py` | 关键路径 / 依赖 / 浮动 | `python3 schedule_health.py --project <项目>/project.yaml`（或 `--data schedule.yaml [--start 2025-08-01]`） |
-| `consistency_check.py` | 交付前质量门（控制级，exit 1=阻断） | `python3 consistency_check.py --project <项目>/project.yaml [--strict]` |
-| `baseline.py` | 计划冻结为基线（前置质量门） | `python3 baseline.py --freeze --project <项目>/project.yaml`；`--status` 查看状态 |
-| `control_engine.py` | 运营控制引擎（对照基线周期巡检，exit 1=有 RED 升级） | `python3 control_engine.py --project <项目>/project.yaml [--as-of 2026-08-12] [--json]` |
-| `dispatch.py` | 专家调度计划（审计 WBS 缺 role / 超阈值） | `python3 dispatch.py --project <项目>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]` |
-| `rollup_program_wbs.py` | 项目群 WBS 两层化（里程碑级 / 组件级） | `python3 rollup_program_wbs.py <项目群>/project.yaml [--derive-actuals]` |
-| `project_state.py` | 单一事实源读写 | `python3 project_state.py get project.phase --file project.yaml` |
+| `evm.py` | earned value analysis | `python3 evm.py --data metrics.yaml` |
+| `schedule_health.py` | critical path / dependencies / float | `python3 schedule_health.py --project <proj>/project.yaml` (or `--data schedule.yaml [--start 2025-08-01]`) |
+| `consistency_check.py` | pre-delivery quality gate (control level, exit 1 = block) | `python3 consistency_check.py --project <proj>/project.yaml [--strict]` |
+| `baseline.py` | freeze plan as baseline (prereq quality gate) | `python3 baseline.py --freeze --project <proj>/project.yaml`; `--status` to view |
+| `control_engine.py` | operations control engine (periodic patrol vs baseline, exit 1 = RED escalation) | `python3 control_engine.py --project <proj>/project.yaml [--as-of 2026-08-12] [--json]` |
+| `dispatch.py` | expert dispatch plan (audit WBS missing role / over threshold) | `python3 dispatch.py --project <proj>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]` |
+| `rollup_program_wbs.py` | program WBS two-leveling (milestone / component) | `python3 rollup_program_wbs.py <program>/project.yaml [--derive-actuals]` |
+| `project_state.py` | single-source read/write | `python3 project_state.py get project.phase --file project.yaml` |
+| `confidentiality_check.py` | **发布前**穿透式机密性扫描（覆盖所有文件内容，含二进制/字节码） | `python3 confidentiality_check.py [--pack <skill_root>]`（exit 1 = 含敏感令牌，禁止发布） |
 
-> 渲染引擎 `render.py` 支持的语法子集：`{{ project.name }}` 变量、`{{#each list}}…{{this.x}}…{{/each}}` 循环、
-> `{{#if a == "b"}}…{{else}}…{{/if}}` 条件。不支持 Jinja 的 `{% %}`、过滤器、宏。
+> Render engine `render.py` syntax subset: `{{ project.name }}` variables,
+> `{{#each list}}…{{this.x}}…{{/each}}` loops, `{{#if a == "b"}}…{{else}}…{{/if}}` conditions.
+> Jinja `{% %}`, filters, and macros are NOT supported.
 
 ---
 
-## 8. 双轨产出（Markdown → DOCX）
+## 8. Dual-Track Output (Markdown → DOCX)
 
-- **Markdown 是单一事实源**：所有模板渲染为 `.md`，便于版本管理、差异对比、二次处理。
-- **DOCX 是正式交付件**：`render_docx.py` 优先用 `pandoc`；若环境无 pandoc，自动回退到 `python-docx`
-  （支持标题、段落、有序/无序列表、表格、粗体）。已内置验证通过。
+- **Markdown is the single source of truth**: all templates render to `.md`, convenient for version
+  control, diff, and post-processing.
+- **DOCX is the formal deliverable**: `render_docx.py` prefers `pandoc`; if pandoc is absent it falls back
+  to `python-docx` (supports headings, paragraphs, ordered/unordered lists, tables, bold). Verified.
 
 ```bash
-python3 <SKILL_DIR>/scripts/render_docx.py /workspace/支付重构/risks/risk_register.md
-# 输出 /workspace/支付重构/risks/risk_register.docx
+python3 <SKILL_DIR>/scripts/render_docx.py /workspace/Payment Refactor/risks/risk_register.md
+# outputs /workspace/Payment Refactor/risks/risk_register.docx
 ```
 
 ---
 
-## 9. 指标口径
+## 9. Metric Definitions
 
-| 指标 | 公式 | 健康阈值 |
-|------|------|----------|
-| CPI 成本绩效 | EV/AC | <0.95 成本超支 |
-| SPI 进度绩效 | EV/PV | <0.95 进度落后 |
-| CV / SV | EV−AC / EV−PV | 负为超支/落后 |
+| Metric | Formula | Healthy threshold |
+|--------|---------|-------------------|
+| CPI cost performance | EV/AC | <0.95 = cost overrun |
+| SPI schedule performance | EV/PV | <0.95 = schedule slip |
+| CV / SV | EV−AC / EV−PV | negative = overrun/slip |
 | EAC / ETC | BAC/CPI / EAC−AC | — |
-| VAC | BAC−EAC | 负为将超预算 |
-| 速率 / 燃尽（敏捷） | 完成故事点 / 剩余工作量 | 趋势稳定为佳 |
+| VAC | BAC−EAC | negative = will exceed budget |
+| velocity / burndown (agile) | completed story points / remaining work | stable trend is good |
 
-完整定义与项目群/迭代指标见 `references/metrics.md`。
-
----
-
-## 10. 扩展指南
-
-本技能为**可扩展模板库**设计，新增能力无需改引擎或 SKILL.md：
-
-1. **新增一个产物模板**：在对应目录（如 `agile/`）放 `my_template.md`，用 `render.py` 语法写占位符。
-2. **登记数据键**：在 `references/templates-index.md` 加一行（模板文件 / 数据键 / 说明）。
-3. **新增一个方法论**：建 `references/methodology-xxx.md` 说明阶段与仪式，建 `templates/xxx/` 放专属模板，在 SKILL.md 路由表与 templates-index 登记。
-4. **新增分析脚本**：放 `scripts/`，在 SKILL.md「脚本速查」与对应 reference 引用即可。
+Full definitions and program/iteration metrics are in `references/metrics.md`.
 
 ---
 
-## 11. 常见问题 FAQ
+## 10. Extension Guide
 
-**Q1：为什么 `{{ sprint.num }}` 用了 `num` 而不是 `no`？**
-PyYAML 遵循 YAML 1.1，会把键名 `no`/`yes`/`on`/`off` 强制转成布尔值，导致 `{{ sprint.no }}` 渲染为空。
-技能统一用 `num`（如 `sprint.num` / `iteration.num`）规避，数据侧直接写数字即可。
+This skill is designed as an **extensible template library**; adding capabilities needs no engine or
+SKILL.md change:
 
-**Q2：表格行之间为什么有时有空行？**
-`render.py` 对循环体做了首尾换行归一，渲染产物行尾仅保留一个换行，Markdown 仍合法可用，不影响渲染与 DOCX 导出。
-
-**Q3：依赖 `deps` 在甘特里显示成 `['t1','t2']` 这种格式？**
-这是列表字面量直接输出。渲染引擎已对列表型变量做逗号拼接（`t1, t2`）。若需更精致格式，可在数据里预拼好字符串。
-
-**Q4：没有 pandoc 能导出 Word 吗？**
-能。`render_docx.py` 会自动回退到 `python-docx`（已验证）。
-
-**Q5：一致性校验报"风险缺少 owner"怎么办？**
-每条风险必须填 `owner` 与 `mitigation`；`project.sponsor` / `project.pm` 也必须明确，否则质量门不通过。未知时填"（待定）"并标注，交付前补全。
+1. **Add a deliverable template**: drop `my_template.md` in the relevant directory (e.g. `agile/`) using
+   `render.py` syntax for placeholders.
+2. **Register data keys**: add a line in `references/templates-index.md` (template file / data keys / note).
+3. **Add a methodology**: create `references/methodology-xxx.md` describing phases and ceremonies, add
+   `templates/xxx/` for its templates, and register in the SKILL.md routing table and templates-index.
+4. **Add an analysis script**: drop it in `scripts/`, reference it in the SKILL.md "Script Quick Reference"
+   and the relevant reference doc.
 
 ---
 
-## 12. 完整示例：从 0 启动一个敏捷项目
+## 11. FAQ
+
+**Q1: Why does `{{ sprint.num }}` use `num` instead of `no`?**
+PyYAML follows YAML 1.1, which coerces keys `no`/`yes`/`on`/`off` into booleans, making `{{ sprint.no }}`
+render empty. The skill uniformly uses `num` (e.g. `sprint.num` / `iteration.num`) to avoid this; just write
+the number directly on the data side.
+
+**Q2: Why are there sometimes blank lines between table rows?**
+`render.py` normalizes leading/trailing newlines on loop bodies, leaving only one newline at line ends — the
+Markdown remains valid and does not affect rendering or DOCX export.
+
+**Q3: Dependencies `deps` show as `['t1','t2']` in the Gantt?**
+That's the list literal printed directly. The render engine already comma-joins list-type variables
+(`t1, t2`). For finer formatting, pre-concatenate the string in the data.
+
+**Q4: Can I export Word without pandoc?**
+Yes. `render_docx.py` falls back to `python-docx` automatically (verified).
+
+**Q5: Consistency check says "risk missing owner" — what now?**
+Every risk must have `owner` and `mitigation`; `project.sponsor` / `project.pm` must also be set, or the
+quality gate fails. Fill unknowns with "(TBD)" and flag them; complete before delivery.
+
+---
+
+## 12. Full Example: Launch an Agile Project from Scratch
 
 ```bash
 SKILL_DIR=/root/.codebuddy/skills/pm-master
 
-# ① 脚手架
-python3 $SKILL_DIR/scripts/init_project.py "支付重构" --type project --methodology agile --framework scrum
+# ① scaffold
+python3 $SKILL_DIR/scripts/init_project.py "Payment Refactor" --type project --methodology agile --framework scrum
 
-# ② 准备数据（risks.yaml 节选）
+# ② prepare data (risks.yaml excerpt)
 cat > /tmp/risks.yaml <<'YAML'
-project: { name: 支付重构, pm: 张三, sponsor: 李四 }
+project: { name: Payment Refactor, pm: Zhang San, sponsor: Li Si }
 risks:
-  - { id: R1, description: 第三方接口不稳, category: 技术, likelihood: 中, impact: 高,
-      score: 12, owner: 王五, mitigation: 熔断+重试+压测, status: 监控中 }
+  - { id: R1, description: unstable third-party API, category: technical, likelihood: medium, impact: high,
+      score: 12, owner: Wang Wu, mitigation: circuit-breaker+retry+load-test, status: monitoring }
 YAML
 
-# ③ 渲染产物
+# ③ render deliverable
 python3 $SKILL_DIR/scripts/render.py \
   --template $SKILL_DIR/templates/common/risk_register.md \
-  --data /tmp/risks.yaml --out /workspace/支付重构/risks/risk_register.md
+  --data /tmp/risks.yaml --out /workspace/Payment Refactor/risks/risk_register.md
 
-# ④ 导出 Word
-python3 $SKILL_DIR/scripts/render_docx.py /workspace/支付重构/risks/risk_register.md
+# ④ export Word
+python3 $SKILL_DIR/scripts/render_docx.py /workspace/Payment Refactor/risks/risk_register.md
 
-# ⑤ 质量门
-python3 $SKILL_DIR/scripts/consistency_check.py --project /workspace/支付重构/project.yaml
+# ⑤ quality gate
+python3 $SKILL_DIR/scripts/consistency_check.py --project /workspace/Payment Refactor/project.yaml
 ```
 
-> 自然语言方式等价："用敏捷帮我启动支付重构项目，识别主要风险并出一份风险登记册和 Word 版。"
-> 在真实会话中，主控会自动完成 ①~⑤ 并视情况组队并行产出其余产物。
+> The natural-language equivalent: "Use agile to launch the Payment Refactor project, identify the main
+> risks and produce a risk register plus a Word version." In a real session the orchestrator auto-completes
+> ①~⑤ and teams up in parallel for other deliverables as needed.
 
 ---
 
-## 13. 提示词示例库
+## 13. Prompt Example Library
 
-直接用自然语言即可触发，以下供参考：
+Just use natural language to trigger; examples for reference:
 
-- "用**瀑布**帮我规划『核心系统升级』，出 **WBS、排期和阶段门评审**。"
-- "用**敏捷 Scrum** 启动『支付重构』，建 **产品 Backlog 和风险登记册**。"
-- "按 **2 周迭代** 管理『数据平台』，生成**迭代计划和燃尽图**。"
-- "『自动驾驶项目群』用 **hybrid**，硬件走瀑布、软件走敏捷，出**治理地图**。"
-- "建立『数字化转型项目群』，做**组合看板、跨项目依赖图和收益实现计划**。"
-- "算一下这个项目的 **EVM**，看 CPI/SPI 是否健康。"
-- "检查排期，**找关键路径和缺失依赖**。"
-- "基于我们刚定的范围，**接着**把 WBS 拆到三级**（fork 接力）**。"
-- "把这些产物**导出成 Word** 发给干系人。"
+- "Use **waterfall** to plan 'Core System Upgrade', produce **WBS, schedule, and stage-gate review**."
+- "Use **agile Scrum** to launch 'Payment Refactor', build a **product backlog and risk register**."
+- "Manage 'Data Platform' on a **2-week iteration** basis, generate an **iteration plan and burndown**."
+- "'Autonomous Driving Program' uses **hybrid**, hardware on waterfall, software on agile, produce a
+  **governance map**."
+- "Set up the 'Digital Transformation Program' with a **portfolio dashboard, cross-project dependency map,
+  and benefits realization plan**."
+- "Compute this project's **EVM** and check whether CPI/SPI are healthy."
+- "Check the schedule, **find the critical path and missing dependencies**."
+- "Based on the scope we just agreed, **continue** and break the WBS down to level 3 (**fork relay**)."
+- "**Export these deliverables to Word** and send to stakeholders."
 
 ---
 
-_本文档由 PM Master 技能配套提供。技能路径：`<skills>/pm-master/`，入口 `SKILL.md`。_
+## 14. 发布前机密性扫描（Pre-Publish Confidentiality Scan）
+
+**任何把 skill 包（含 `templates/` `scripts/` `references/` 及所有示例）发布到共享分支 / 上架前，
+必须先跑机密性扫描。** 评审必须覆盖「所有文件的内容」，而不仅限文件路径 / 文件名——含二进制
+缓存（如 `__pycache__/*.pyc`，其字节码内嵌 `co_filename` 绝对路径，仅扫文本会漏掉）。
+
+```bash
+python3 <SKILL_DIR>/scripts/confidentiality_check.py
+# 默认扫描 <SKILL_DIR>；也可 --pack <dir> 指定。
+# exit 0 = 全清（无 HIGH 敏感令牌）；exit 1 = 发现泄露，必须先脱敏再发布。
+```
+
+扫描范围与判定：
+- **HIGH（命中即泄露，exit 1）**：`LIC` / `Teradata` / `Vertica` / `Vantage` / `FSAS` / `lic-datalake` /
+  绝对路径 `/Users/` `/home/` `C:\Users` / `qclaw` / `Stephen Lau`。文本与二进制（字节级）均查。
+- **白名单（不报警，已评审确认安全）**：脱敏占位符 `示例客户` / `示例数据湖项目` / `MPP数仓`；
+  通用示例角色 `nos-architect`；通用示例邮箱 `*@corp.com` / `*@external.com` / `*@example.com`；
+  通用示例货币占位 `示例 ₹ 金额` / `₹XX.XM`。
+- 若 `.pyc` 被重新编译且内嵌绝对路径，扫描器会在二进制层抓到 `/Users/…` 并阻断发布——这正是
+  早期评审只扫文本漏掉的环节。`.gitignore` 已忽略 `__pycache__/*.pyc`，但目录快照仍可能带出，
+  故发布前以本扫描器为准。
+
+---
+
+_This document is provided with the PM Master skill. Skill path: `<skills>/pm-master/`, entry point `SKILL.md`._

@@ -1,151 +1,139 @@
-# PM Master · 项目与项目群管理技能
+# PM Master · Project & Program Management Skill
 
-> 面向科技行业 PM 的**项目 + 项目群**管理技能。Builder 理念、可执行、内置模板库、支持多 Agent 调度，
-> 适配 **waterfall / agile / iteration / hybrid** 四种实施方法论。
+> A **project + program** management skill for PMs in the tech industry. Builder philosophy, executable, with a built-in template library and multi-Agent orchestration, supporting four delivery methodologies: **waterfall / agile / iteration / hybrid**.
 
-- **版本**：1.3.6
-- **许可**：MIT
-- **定位**：任何项目/项目群请求都必须落到真实产物（文件），禁止只给建议。
-
----
-
-## 1. 它解决什么问题
-
-科技行业的项目交付常常卡在三件事上：**方法论不统一**（瀑布/敏捷/迭代/混合混用）、
-**交付物无标准**（章程/WBS/风险/状态报告各自为政）、**治理不可持续**（计划与执行脱节、缺基线、
-缺周期巡检）。PM Master 把这三件事固化成一个**可执行工程系统**：
-
-- 每个请求 → 一份真实文件（Markdown，可导出 DOCX）；
-- 每个项目 → 一份 `project.yaml` 单一事实源，跨会话/跨 Agent 连续；
-- 每条纪律 → 一道可校验的质量门（一致性门禁、基线化、运营控制）。
+- **Version**: 2.1.0
+- **License**: MIT
+- **Positioning**: Every project/program request must produce a real artifact (file); advice-only responses are prohibited.
 
 ---
 
-## 2. 核心能力
+## 1. What Problems It Solves
 
-| 能力 | 说明 | 适用 |
+Project delivery in the tech industry often gets stuck on three things: **inconsistent methodologies** (waterfall/agile/iteration/hybrid mixed arbitrarily), **no standard deliverables** (charter/WBS/risk/status reports each done their own way), and **unsustainable governance** (plans disconnected from execution, missing baselines, no periodic inspection). PM Master turns these three problems into a **executable engineering system**:
+
+- Every request → a real file (Markdown, exportable to DOCX);
+- Every project → a single source of truth `project.yaml`, continuous across sessions/Agents;
+- Every discipline → a verifiable quality gate (consistency gate, baselining, operational control).
+
+---
+
+## 2. Core Capabilities
+
+| Capability | Description | Applies To |
 |------|------|------|
-| 项目启动 / 规划 | 章程、干系人、RACI、WBS、排期、风险、RAID | 任何方法论 |
-| 敏捷交付 | 产品 Backlog、Sprint 计划、DoD、燃尽、回顾 | agile |
-| 迭代交付 | 迭代计划 / Backlog / 评审 | iteration |
-| 瀑布交付 | 需求规格、WBS、甘特、阶段门、质量计划 | waterfall |
-| 混合治理 | 治理地图、宏微映射 | hybrid |
-| 项目群治理 | 组合章程、组合看板、依赖图、收益实现 | program |
-| 指标分析 | 挣值 EVM、排期关键路径、一致性校验 | 分析场景 |
-| 多 Agent 并行 | 组队产出互相独立的产物 | 复杂启动 / 评审 |
-| 双轨文档 | Markdown 源 → DOCX 正式件 | 交付 / 汇报 |
-| 阶段化交付 | P0+P1 启动规划 / P2 执行 / P3 监控 / P4 收尾 阶段模块，每阶段定义活动/交付物/准则 | 全周期 |
-| 阶段门审批 | gate_engine 评估入口准则 + 硬门（执行/收尾）强制审批，翻转状态机 | 阶段流转 |
-| operational 双轨并行 | P2 执行轨（领域专家）+ P3 监控轨（monitoring-agent）多 Agent 并行，共享事实源、字段零冲突 | 执行/监控 |
-| 对外沟通与邮件审批 | communication_plan 登记相关方联络簿；communication-agent 起草，comm_send.py 强制审批门 + 审计，分层配置（安装期护栏 / 项目期数据） | 沟通/邮件 |
+| Project Initiation / Planning | Charter, stakeholders, RACI, WBS, schedule, risk, RAID | Any methodology |
+| Agile Delivery | Product Backlog, Sprint Plan, DoD, burndown, retrospective | agile |
+| Iteration Delivery | Iteration Plan / Backlog / Review | iteration |
+| Waterfall Delivery | Requirements Spec, WBS, Gantt, stage gates, quality plan | waterfall |
+| Hybrid Governance | Governance map, macro-micro mapping | hybrid |
+| Program Governance | Portfolio charter, portfolio dashboard, dependency map, benefits realization | program |
+| Metrics Analysis | Earned value (EVM), schedule critical path, consistency check | Analysis scenarios |
+| Multi-Agent Parallelism | Team up to produce mutually independent artifacts | Complex initiation / review |
+| Dual-track Docs | Markdown source → DOCX formal document | Delivery / reporting |
+| Phased Delivery | P0+P1 initiation & planning / P2 execution / P3 monitoring / P4 closeout phase modules; each phase defines activities/deliverables/criteria | Full lifecycle |
+| Stage Gate Approval | `gate_engine` evaluates entry criteria + hard gates (execution/closeout) enforce approval, flipping the state machine | Phase transitions |
+| Operational Dual-track Parallel | P2 execution track (domain experts) + P3 monitoring track (`monitoring-agent`) multi-Agent parallel, sharing the source of truth with zero field conflicts | Execution/Monitoring |
+| External Communication & Email Approval | `communication_plan` registers the stakeholder contact book; `communication-agent` drafts, `comm_send.py` enforces an approval gate + audit, with layered configuration (install-time guardrails / project-time data) | Communication/Email |
 
 ---
 
-## 3. 快速开始
+## 3. Quick Start
 
-### 3.1 安装
-把技能目录放到 CodeBuddy 的 `skills/` 下：
+### 3.1 Installation
+Place the skill directory under CodeBuddy's `skills/`:
 
 ```bash
-# 例如
+# for example
 cp -r pm-master /root/.codebuddy/skills/pm-master
 ```
 
-技能随会话自动可用，无需额外安装。也可直接解压分发的 `pm-master.zip` 到该目录。
+The skill is automatically available per session, no extra installation needed. You can also extract the distributed `pm-master.zip` directly into that directory.
 
-> **安装期配置（策略/护栏）**：技能根 `config.yaml` 定义邮件能力与安全护栏——
-> `email.enabled` / `email.backend`（agent-mail·himalaya·gog·smtp）/ `email.default_from` /
-> `email.requires_send_approval`（硬护栏，项目不可关闭）。安装时按需填写；项目级数据（联络簿/节奏）
-> 在 `project.yaml` 的 `communication:` 块。详见 `references/project-schema.md` 与 `scripts/comm_send.py`。
+> **Install-time configuration (policy/guardrails)**: The skill root `config.yaml` defines email capability and security guardrails — `email.enabled` / `email.backend` (agent-mail·himalaya·gog·smtp) / `email.default_from` / `email.requires_send_approval` (hard guardrail, cannot be disabled at project level). Fill in as needed during install; project-level data (contact book/cadence) lives in the `communication:` block of `project.yaml`. See `references/project-schema.md` and `scripts/comm_send.py` for details.
 
-### 3.2 最小可用三步（命令行）
+### 3.2 Minimal Three-Step Workflow (Command Line)
 
 ```bash
 SKILL_DIR=/root/.codebuddy/skills/pm-master
 
-# 1) 建工作区（单一事实源 project.yaml 在此生成）
-python3 $SKILL_DIR/scripts/init_project.py "支付重构" --type project --methodology agile --framework scrum
+# 1) Build the workspace (the single source of truth project.yaml is generated here)
+python3 $SKILL_DIR/scripts/init_project.py "Payment Refactor" --type project --methodology agile --framework scrum
 
-# 2) 用模板产出一份风险登记册（先准备数据 yaml，再渲染）
+# 2) Produce a risk register from a template (prepare the data yaml first, then render)
 python3 $SKILL_DIR/scripts/render.py \
   --template $SKILL_DIR/templates/common/risk_register.md \
-  --data risks.yaml --out /workspace/支付重构/risks/risk_register.md
+  --data risks.yaml --out /workspace/Payment Refactor/risks/risk_register.md
 
-# 3) 导出正式 Word 文档
-python3 $SKILL_DIR/scripts/render_docx.py /workspace/支付重构/risks/risk_register.md
+# 3) Export a formal Word document
+python3 $SKILL_DIR/scripts/render_docx.py /workspace/Payment Refactor/risks/risk_register.md
 ```
 
-> 自然语言触发更简单：直接对 Agent 说"用敏捷帮我启动支付重构项目"即可，不必手敲命令。
+> Natural-language triggers are simpler: just tell the Agent "Use agile to help me initiate the payment refactor project" — no need to type commands manually.
 
 ---
 
-## 4. 核心概念
+## 4. Core Concepts
 
-### 4.1 单一事实源 `project.yaml`
-每个项目/项目群一个 `project.yaml`（位于工作区根 `/workspace/<slug>/project.yaml`）。
-主控与所有子 Agent 都通过它读写，保证状态一致、跨会话连续。完整字段结构见
-[`references/project-schema.md`](references/project-schema.md)；样例见 `examples/sample_project.yaml`。
+### 4.1 Single Source of Truth `project.yaml`
+One `project.yaml` per project/program (located at the workspace root `/workspace/<slug>/project.yaml`). The controller and all sub-Agents read and write through it, ensuring consistent state and continuity across sessions. For the full field structure see [`references/project-schema.md`](references/project-schema.md); for an example see `examples/sample_project.yaml`.
 
-### 4.2 四维度分类（每次请求先判定）
-| 维度 | 取值 |
+### 4.2 Four-Dimension Classification (decide per request first)
+| Dimension | Values |
 |------|------|
-| `type` | project（项目） / program（项目群） |
+| `type` | project / program |
 | `methodology` | waterfall / agile / iteration / hybrid |
-| `phase` | 启动 / 规划 / 执行 / 监控 / 收尾（项目群另有组合阶段） |
-| `intent` | 规划 / 构建 / 汇报 / 分析 / 治理 |
+| `phase` | Initiation / Planning / Execution / Monitoring / Closeout (programs additionally have portfolio phases) |
+| `intent` | Planning / Build / Report / Analysis / Governance |
 
-### 4.3 三种执行模式（混合调度）
-| 模式 | 何时用 | 做法 |
+### 4.3 Three Execution Modes (Hybrid Orchestration)
+| Mode | When to use | Approach |
 |------|--------|------|
-| **direct（直做）** | 单产物 / 解释 / 微调 | 主控直接调脚本或模板完成 |
-| **team（组队并行）** | 多独立产物（如启动需章程+WBS+风险+RACI） | 同消息并行派出专职子 Agent，聚合 + 一致性校验 |
-| **fork（续上下文）** | 需完整上下文接力（如"接着上次风险分析继续"） | 子 Agent 继承本会话全部上下文 |
+| **direct (do it yourself)** | Single artifact / explanation / fine-tuning | The controller directly calls scripts or templates to complete it |
+| **team (parallel teaming)** | Multiple independent artifacts (e.g., initiation needs charter+WBS+risk+RACI) | Dispatch dedicated sub-Agents in parallel within the same message, then aggregate + consistency check |
+| **fork (continue context)** | Needs full-context handoff (e.g., "continue from last risk analysis") | Sub-Agent inherits the entire context of this session |
 
-> **TeamCreate** 是本环境的多 Agent 并发派发机制（Agent 工具的 team 模式）。子 Agent 角色与 brief
-> 模板见 [`references/agents.md`](references/agents.md)，调度决策树见
-> [`references/orchestration.md`](references/orchestration.md)。
+> **TeamCreate** is this environment's multi-Agent concurrent dispatch mechanism (the team mode of the Agent tool). For sub-Agent roles and brief templates see [`references/agents.md`](references/agents.md); for the orchestration decision tree see [`references/orchestration.md`](references/orchestration.md).
 
-### 4.4 强制状态机：规划 → 基线 → 运营控制
-`lifecycle_state` 的强制串行纪律（详见 [`references/lifecycle.md`](references/lifecycle.md) §5）：
+### 4.4 Mandatory State Machine: Plan → Baseline → Operational Control
+The mandatory serial discipline of `lifecycle_state` (see [`references/lifecycle.md`](references/lifecycle.md) §5):
 
 ```
 planning → review → baselined → operational → closed
 ```
 
-- **waterfall / hybrid** 进入执行/监控前**必须** `baseline.py --freeze`（冻结计划为基线）；
-- 经控制门把 `lifecycle_state` 置为 `operational` 后，才能用 `control_engine.py` 周期巡检；
-- 未基线化（缺 `baseline` 指针）的项目**不得**进入运营阶段，一致性门禁会直接阻断。
+- **waterfall / hybrid** **must** run `baseline.py --freeze` (freeze the plan as baseline) before entering execution/monitoring;
+- Only after a control gate sets `lifecycle_state` to `operational` can `control_engine.py` be used for periodic inspection;
+- Projects that are not baselined (missing `baseline` pointer) **may not** enter the operational phase; the consistency gate will block directly.
 
-### 4.5 阶段模块与阶段门（Phase Modules & Gates）
-启动→规划→执行→监控→收尾 拆成 4 个阶段模块（`references/phases/`），每模块定义该阶段的
-**活动 / 必产出交付物 / 入口准则 / 出口准则 / 阶段门审批清单**，并适配各方法论。阶段间流转由
-`gate_engine.py` 管控（硬门复用 `consistency_check` / `control_engine`，未过则 exit 1 拒绝推进）：
+### 4.5 Phase Modules & Stage Gates (Phase Modules & Gates)
+Initiation→Planning→Execution→Monitoring→Closeout is split into 4 phase modules (`references/phases/`), each defining the phase's **activities / mandatory deliverables / entry criteria / exit criteria / stage-gate approval checklist**, adapted per methodology. Transitions between phases are governed by `gate_engine.py` (hard gates reuse `consistency_check` / `control_engine`; if not passed, exits 1 and refuses to proceed):
 
-- G0→1 启动→规划（软门 / PM）
-- **G1→2 规划→执行（硬门 / sponsor）**：须 `consistency_check.py` exit 0（waterfall/hybrid 另须 `baseline.py --freeze`）
-- G2→3 执行→监控（软门 / PM，operational 内并发）
-- **G3→4 监控→收尾（硬门 / sponsor）**：须 `control_engine.py` exit 0 + 验收/复盘交付物 +（项目群）收益闭环
+- G0→1 Initiation→Planning (soft gate / PM)
+- **G1→2 Planning→Execution (hard gate / sponsor)**: requires `consistency_check.py` exit 0 (waterfall/hybrid additionally require `baseline.py --freeze`)
+- G2→3 Execution→Monitoring (soft gate / PM, parallel within operational)
+- **G3→4 Monitoring→Closeout (hard gate / sponsor)**: requires `control_engine.py` exit 0 + acceptance/retrospective deliverables + (program) benefits closure
 
-详见 `lifecycle.md` §6 与 `references/phases/*`。
+See `lifecycle.md` §6 and `references/phases/*` for details.
 
 ---
 
-## 5. 标准工作流（每次都遵循）
+## 5. Standard Workflow (follow every time)
 
-- **Step 0 · 定位事实源**：找 `project.yaml`；若不存在 → `init_project.py` 建骨架。
-- **Step 1 · 分类路由**：判定 type / methodology / phase / intent 四维度；判定 `phase` 后读取对应阶段模块（`references/phases/*`），按该模块的活动/交付物/准则推进，阶段间流转须过 `gate_engine.py` 阶段门。
-- **Step 2 · 读方法论手册**：按 methodology 读 `references/methodology-*.md`（项目群读 `program-management.md`）。
-- **Step 2.5 · 专家调度（WBS 拆到叶子包）**：`planner-agent` 出 SOW 级摘要包；`dispatch.py` 审计并生成调度计划；领域专家子 Agent 把包拆到叶子级（≤ `control.granularity_threshold` 人天，默认 10）。
-- **Step 3 · 选执行模式**：direct / team / fork（见 §4.3）。
-- **Step 4 · 构建产物**：脚手架 + `render.py` 渲染 + **强制跑分析脚本**（`schedule_health` / `evm`）+ 交付前**必过 `consistency_check.py`**。
-- **Step 5 · 组队（仅 team 模式）**：TeamCreate 派专职子 Agent，主控聚合 + 一致性校验。
-- **Step 6 · 交付**：更新 `artifacts` 索引；按需 `render_docx.py`；向用户汇总产物清单 + 指标卡。
+- **Step 0 · Locate the source of truth**: Find `project.yaml`; if it doesn't exist → `init_project.py` builds the skeleton.
+- **Step 1 · Classify & route**: Determine the four dimensions type / methodology / phase / intent; once `phase` is determined, read the corresponding phase module (`references/phases/*`) and proceed per its activities/deliverables/criteria; transitions between phases must pass `gate_engine.py` stage gates.
+- **Step 2 · Read the methodology manual**: Per methodology read `references/methodology-*.md` (for programs read `program-management.md`).
+- **Step 2.5 · Expert dispatch (break WBS down to leaf packages)**: `planner-agent` produces SOW-level summary packages; `dispatch.py` audits and generates the dispatch plan; domain-expert sub-Agents break packages down to leaf level (≤ `control.granularity_threshold` person-days, default 10).
+- **Step 3 · Choose execution mode**: direct / team / fork (see §4.3).
+- **Step 4 · Build artifacts**: scaffolding + `render.py` rendering + **mandatory analysis scripts** (`schedule_health` / `evm`) + **must pass `consistency_check.py`** before delivery.
+- **Step 5 · Team up (team mode only)**: TeamCreate dispatches dedicated sub-Agents; the controller aggregates + consistency check.
+- **Step 6 · Deliver**: Update the `artifacts` index; run `render_docx.py` as needed; summarize the artifact list + metrics card for the user.
 
 ---
 
-## 6. 模板库（35 个 + `_macros.md`）
+## 6. Template Library (35 templates + `_macros.md`)
 
-| 目录 | 数量 | 模板 |
+| Directory | Count | Templates |
 |------|------|------|
 | `common/` | 16 | project_charter, stakeholder_register, raci, communication_plan, raid_log, risk_register, status_report, lessons_learned, closure_report, project_board, milestone_list, change_request, change_log, baseline_record, control_register, control_report |
 | `waterfall/` | 5 | requirements_spec, wbs, schedule_gantt, stage_gate_review, quality_plan |
@@ -154,100 +142,96 @@ planning → review → baselined → operational → closed
 | `hybrid/` | 2 | hybrid_governance, macro_micro_map |
 | `program/` | 4 | program_charter, portfolio_dashboard, dependency_map, benefits_realization |
 
-每个模板的**数据键契约**见 [`references/templates-index.md`](references/templates-index.md)。
+The **data-key contract** for each template is in [`references/templates-index.md`](references/templates-index.md).
 
 ---
 
-## 7. 脚本速查
+## 7. Script Quick Reference
 
-所有脚本位于 `scripts/`，用 `python3` 运行。
+All scripts are under `scripts/`, run with `python3`.
 
-| 脚本 | 用途 | 命令示例 |
+| Script | Purpose | Example Command |
 |------|------|----------|
-| `init_project.py` | 建工作区 + project.yaml | `python3 init_project.py "项目名" --type project --methodology agile --framework scrum [--domain <领域> --product <产品>]` |
-| `render.py` | 模板 + 数据 → Markdown | `python3 render.py --template T --data D.yaml --out O.md` |
+| `init_project.py` | Build workspace + project.yaml | `python3 init_project.py "Project name" --type project --methodology agile --framework scrum [--domain <domain> --product <product>]` |
+| `render.py` | Template + data → Markdown | `python3 render.py --template T --data D.yaml --out O.md` |
 | `render_docx.py` | Markdown → DOCX | `python3 render_docx.py O.md [--out O.docx]` |
-| `evm.py` | 挣值分析 | `python3 evm.py --data metrics.yaml` |
-| `schedule_health.py` | 关键路径 / 依赖 / 浮动 | `python3 schedule_health.py --project <项目>/project.yaml`（或 `--data schedule.yaml [--start 2025-08-01]`） |
-| `consistency_check.py` | 交付前质量门（控制级，exit 1=阻断） | `python3 consistency_check.py --project <项目>/project.yaml [--strict]` |
-| `baseline.py` | 计划冻结为基线（前置质量门） | `python3 baseline.py --freeze --project <项目>/project.yaml`；`--status` 查看状态 |
-| `control_engine.py` | 运营控制引擎（对照基线周期巡检，exit 1=有 RED 升级） | `python3 control_engine.py --project <项目>/project.yaml [--as-of 2026-08-12] [--json]` |
-| `dispatch.py` | 专家调度计划（审计 WBS 缺 role / 超阈值） | `python3 dispatch.py --project <项目>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]` |
-| `rollup_program_wbs.py` | 项目群 WBS 两层化（里程碑级 / 组件级） | `python3 rollup_program_wbs.py <项目群>/project.yaml [--derive-actuals]` |
-| `project_state.py` | 单一事实源读写 | `python3 project_state.py get project.phase --file project.yaml` |
-| `gate_engine.py` | 阶段门引擎（评估/审批进入目标阶段，硬门复用 consistency/control） | `python3 gate_engine.py --project <项目>/project.yaml --to 执行 [--approve "张三(sponsor)"]`；`--status` 看当前状态与可走的门 |
-| `test_gate_engine.py` | 阶段门引擎单测套件（CI 门禁，66 断言覆盖 4 方法论 × 软/硬门 / 被拒 / dry-run / --status） | `python3 test_gate_engine.py`（无参；退出码 0=全过，1=有失败，可挂 CI） |
-| `comm_send.py` | 对外邮件审批门（按角色解析 `communication.contacts[]` 收件人，强制 `--approve` 后委派后端，写 `governance.communications` 审计；`--dry-run` 不真正外发） | `python3 comm_send.py --project <项目>/project.yaml --to "sponsor,pm" --subject "里程碑达成" --body-file draft.md --approve "张三(PM)"`；`--dry-run` 仅复核 |
+| `evm.py` | Earned value analysis | `python3 evm.py --data metrics.yaml` |
+| `schedule_health.py` | Critical path / dependencies / float | `python3 schedule_health.py --project <project>/project.yaml` (or `--data schedule.yaml [--start 2025-08-01]`) |
+| `consistency_check.py` | Pre-delivery quality gate (control level, exit 1 = blocker) | `python3 consistency_check.py --project <project>/project.yaml [--strict]` |
+| `baseline.py` | Freeze plan as baseline (prerequisite quality gate) | `python3 baseline.py --freeze --project <project>/project.yaml`; `--status` to view status |
+| `control_engine.py` | Operational control engine (periodic inspection against baseline, exit 1 = RED escalation) | `python3 control_engine.py --project <project>/project.yaml [--as-of 2026-08-12] [--json]` |
+| `dispatch.py` | Expert dispatch plan (audits WBS for missing role / over-threshold) | `python3 dispatch.py --project <project>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]` |
+| `rollup_program_wbs.py` | Program WBS two-level rollup (milestone level / component level) | `python3 rollup_program_wbs.py <program>/project.yaml [--derive-actuals]` |
+| `project_state.py` | Single source of truth read/write | `python3 project_state.py get project.phase --file project.yaml` |
+| `gate_engine.py` | Stage gate engine (evaluate/approve entry into target phase; hard gates reuse consistency/control) | `python3 gate_engine.py --project <project>/project.yaml --to Execution [--approve "Zhang San(sponsor)"]`; `--status` shows current state and available gates |
+| `test_gate_engine.py` | Stage gate engine unit-test suite (CI gate, 66 assertions covering 4 methodologies × soft/hard gates / rejected / dry-run / --status) | `python3 test_gate_engine.py` (no args; exit code 0 = all pass, 1 = failure, can be wired to CI) |
+| `comm_send.py` | External email approval gate (resolves `communication.contacts[]` recipients by role, requires `--approve` before delegating to backend, writes `governance.communications` audit; `--dry-run` does not actually send) | `python3 comm_send.py --project <project>/project.yaml --to "sponsor,pm" --subject "Milestone achieved" --body-file draft.md --approve "Zhang San(PM)"`; `--dry-run` only reviews |
 
-> ⚠️ **脚本异常处理**：若脚本缺失/路径错误/参数非法，不要静默失败——给出具体报错，并降级为：
-> ① 用 `project_state.py` 维护 `project.yaml`；② 用 `render.py` 直接渲染模板；③ 缺 PyYAML 时先 `pip install pyyaml`。
-
----
-
-## 8. 关键规则（摘要）
-
-- **绝不 advice-only**：任何请求都要产出文件或运行分析，至少更新 `project.yaml`。
-- **先有事实源**：没有 `project.yaml` 就先 `init_project.py`。
-- **方法论要对味**：agile 用 backlog/sprint/burndown，waterfall 用 WBS/甘特/阶段门。
-- **估算强制**：WBS / backlog 每行必须有数值化估算(>0)，不允许占位。
-- **专家调度 + 叶子包颗粒度**：技术领域工作包须由对应领域专家拆解，标 `role` 与 `domain`，叶子包 ≤ 阈值。
-- **分析强制**：waterfall / hybrid 交付前跑 `schedule_health`；执行/监控阶段跑 `evm`。
-- **交付前过质量门**：`consistency_check.py` exit 0 才放过；致命项（估算缺失 / 排期未联网 / 缺 EVM 基线 / 混合缺微计划 / 风险未校准 5×5 / 收益缺 owner / 未基线化）直接阻断。
-- **规划 ≠ 运营化（强制串行）**：先规划→评审→`baseline.py --freeze`→控制门→才能进入执行/监控。
-- **运营控制循环**：进入 `operational` 后按 `control.cadence` 周期跑 `control_engine.py`，对照基线巡检；RED 升级退出码 1，可挂定时任务告警。
-- **阶段流转须过阶段门（强制）**：启动→规划→执行→监控→收尾 按状态机串行推进；进入 `执行`（G1→2）与 `收尾`（G3→4）为**硬门**，须经 `gate_engine.py` 评估且自动化准则全过、由 sponsor 审批后才翻转 `lifecycle_state`；`监控`（G2→3）为**软门**（PM 审批）。硬门不可跳过（见 `references/phases/*`、`lifecycle.md` §6）。
+> ⚠️ **Script exception handling**: If a script is missing / path is wrong / arguments are invalid, do not fail silently — give a specific error, and degrade to: ① use `project_state.py` to maintain `project.yaml`; ② use `render.py` to render templates directly; ③ if PyYAML is missing, first run `pip install pyyaml`.
 
 ---
 
-## 9. 扩展指南（无需改引擎）
+## 8. Key Rules (Summary)
 
-1. **新增产物模板**：在对应目录放 `my_template.md`（用 `render.py` 语法写占位符）。
-2. **登记数据键**：在 `references/templates-index.md` 加一行（模板文件 / 数据键 / 说明）。
-3. **新增方法论**：建 `references/methodology-xxx.md` + `templates/xxx/`，在 SKILL.md 路由表与 templates-index 登记。
-4. **新增分析脚本**：放 `scripts/`，在 SKILL.md 脚本速查与对应 reference 引用即可。
-
----
-
-## 10. 项目群（Program）专项
-
-- 用 `init_project.py --type program` 建组合级工作区。
-- 组合章程 / 组合看板 / 跨项目依赖图 / 收益实现计划，均为项目群专属模板。
-- `rollup_program_wbs.py` 把单源 `wbs` 两层化：项目群层级 = 里程碑级、组件层级 = 叶子工作包级；
-  组件/阶段映射优先读 `project.yaml` 的 `program.components` / `governance.waves`，缺省回退内置示例。
-- 项目群阶段（组合定义/交付/收尾）与生命周期状态机（planning→…→closed）是正交两层，详见 `lifecycle.md` §5.3。
+- **Never advice-only**: Every request must produce a file or run analysis; at minimum update `project.yaml`.
+- **Source of truth first**: If there's no `project.yaml`, run `init_project.py` first.
+- **Use the right methodology**: agile uses backlog/sprint/burndown, waterfall uses WBS/Gantt/stage gates.
+- **Estimation mandatory**: Every WBS / backlog row must have a numeric estimate (>0); placeholders are not allowed.
+- **Expert dispatch + leaf-package granularity**: Technical-domain work packages must be broken down by the corresponding domain expert, tagged with `role` and `domain`, with leaf packages ≤ threshold.
+- **Analysis mandatory**: Run `schedule_health` before delivering waterfall / hybrid; run `evm` during execution/monitoring.
+- **Pass the quality gate before delivery**: `consistency_check.py` must exit 0 to pass; fatal items (missing estimate / schedule not networked / missing EVM baseline / hybrid missing micro-plan / risk not calibrated 5×5 / benefit missing owner / not baselined) are blocked directly.
+- **Planning ≠ operationalization (mandatory serial)**: First plan → review → `baseline.py --freeze` → control gate → only then enter execution/monitoring.
+- **Operational control loop**: After entering `operational`, run `control_engine.py` periodically per `control.cadence` to inspect against the baseline; RED escalation exits with code 1 and can be wired to a scheduled alert.
+- **Phase transitions must pass stage gates (mandatory)**: Initiation→Planning→Execution→Monitoring→Closeout advances serially per the state machine; entering `Execution` (G1→2) and `Closeout` (G3→4) are **hard gates** that require `gate_engine.py` evaluation with all automated criteria passing and sponsor approval before flipping `lifecycle_state`; `Monitoring` (G2→3) is a **soft gate** (PM approval). Hard gates cannot be skipped (see `references/phases/*`, `lifecycle.md` §6).
 
 ---
 
-## 11. 参考文档索引
+## 9. Extension Guide (no engine changes needed)
 
-| 文件 | 何时读 |
+1. **Add an artifact template**: Place `my_template.md` in the relevant directory (use `render.py` syntax for placeholders).
+2. **Register data keys**: Add a line in `references/templates-index.md` (template file / data key / description).
+3. **Add a methodology**: Create `references/methodology-xxx.md` + `templates/xxx/`, and register them in the SKILL.md routing table and templates-index.
+4. **Add an analysis script**: Place it in `scripts/`, and reference it in the SKILL.md script quick-reference and the corresponding reference.
+
+---
+
+## 10. Program-Specific
+
+- Use `init_project.py --type program` to build the portfolio-level workspace.
+- Portfolio charter / portfolio dashboard / cross-project dependency map / benefits realization plan are all program-specific templates.
+- `rollup_program_wbs.py` two-levels the single-source `wbs`: program level = milestone level, component level = leaf work-package level; component/phase mapping preferentially reads `program.components` / `governance.waves` from `project.yaml`, falling back to built-in examples by default.
+- Program phases (Portfolio Definition/Delivery/Closeout) and the lifecycle state machine (planning→…→closed) are two orthogonal layers; see `lifecycle.md` §5.3 for details.
+
+---
+
+## 11. Reference Index
+
+| File | When to read |
 |------|--------|
-| `references/orchestration.md` | 多 Agent 调度、判定执行模式 |
-| `references/agents.md` | 派遣专职子 Agent、写 brief |
-| `references/expert-roles.md` | 领域专家角色目录 + system prompt |
-| `references/activity-expert-map.md` | 活动→角色路由、专家特化、叶子包颗粒度 |
-| `references/lifecycle.md` | 阶段-交付物矩阵、生命周期与状态机 |
-| `references/methodology-*.md` | 各方法论（waterfall/agile/iteration/hybrid） |
-| `references/hybrid_playbook.md` | 混合实操：节奏/微计划/对齐评审/变更控制 |
-| `references/risk-matrix.md` | 风险 5×5 校准刻度与色带 |
-| `references/program-management.md` | 项目群（组合）管理 |
-| `references/metrics.md` | EVM / 燃尽 / 健康度指标口径 |
-| `references/project-schema.md` | `project.yaml` 完整字段结构与协同约定 |
-| `references/templates-index.md` | 模板库全量清单与数据键契约 |
-| `references/usage.md` | 完整使用手册（端到端示例、提示词库） |
-| `references/phases/p0-p1-initiation-planning.md` | P0+P1 启动与规划阶段模块 |
-| `references/phases/p2-execution.md` | P2 执行阶段模块 |
-| `references/phases/p3-monitoring.md` | P3 监控阶段模块 |
-| `references/phases/p4-closeout.md` | P4 收尾阶段模块 |
+| `references/orchestration.md` | Multi-Agent orchestration, deciding execution mode |
+| `references/agents.md` | Dispatch dedicated sub-Agents, write briefs |
+| `references/expert-roles.md` | Domain expert role catalog + system prompt |
+| `references/activity-expert-map.md` | Activity→role routing, expert specialization, leaf-package granularity |
+| `references/lifecycle.md` | Phase-deliverable matrix, lifecycle and state machine |
+| `references/methodology-*.md` | Each methodology (waterfall/agile/iteration/hybrid) |
+| `references/hybrid_playbook.md` | Hybrid practice: cadence/micro-plan/alignment review/change control |
+| `references/risk-matrix.md` | Risk 5×5 calibration scale and color bands |
+| `references/program-management.md` | Program (portfolio) management |
+| `references/metrics.md` | EVM / burndown / health metric definitions |
+| `references/project-schema.md` | `project.yaml` full field structure and collaboration conventions |
+| `references/templates-index.md` | Full template library list and data-key contract |
+| `references/usage.md` | Full usage manual (end-to-end examples, prompt library) |
+| `references/phases/p0-p1-initiation-planning.md` | P0+P1 initiation & planning phase module |
+| `references/phases/p2-execution.md` | P2 execution phase module |
+| `references/phases/p3-monitoring.md` | P3 monitoring phase module |
+| `references/phases/p4-closeout.md` | P4 closeout phase module |
 
 ---
 
-## 12. 版本与变更
+## 12. Version & Changes
 
-变更历史见 [`CHANGELOG.md`](CHANGELOG.md)。当前版本 **1.3.5**（v1.2.0 引入阶段模块 P0–P4 与阶段门引擎 `gate_engine.py`；v1.2.1 同步本 README；v1.2.2 新增 `gate_engine.py` 单测套件；v1.3.0 新增 **operational 双轨并行** 与 **对外邮件审批门**；v1.3.1 **脱敏**：移除真实客户名 / 厂商名等敏感信息，统一改为代号（客户A / MPP 数仓 / 代号 ALPHA），消除法律风险；v1.3.2 进一步脱敏：`rollup_program_wbs.py` 示例映射去标识化（SOW slug 去后缀 / Wave→Stream / 移除 FSAS·NOS·金融与协议）；v1.3.3 新增英文版 `README.en.md` 并确立「中文与英文双语文档同步」规则；v1.3.4 **Mermaid 渲染稳定性 + SOW 级 WBS 强制专家拆解**；v1.3.5 **WBS→排期交付物（build_schedule/build_wbs）+ per-SOW 启动会（build_sow_kickoff）+ 风险登记册色标图标（sev_icon）**；v1.3.6 **项目群级排期（build_schedule --level program）+ SOW 子计划（--sow）+ Mermaid 里程碑语法修复 + 组合看板色标图标（sev_icon）；OpenClaw 英文包运行时输出英文化**）。
+Changelog history is in [`CHANGELOG.md`](CHANGELOG.md). Current version **2.2.0** (v1.2.0 introduced phase modules P0–P4 and the stage-gate engine `gate_engine.py`; v1.2.1 synced this README; v1.2.2 added the `gate_engine.py` unit-test suite; v1.3.0 added **operational dual-track parallelism** and the **external email approval gate**; v1.3.1 **desensitization**: removed real customer names / vendor names and other sensitive info, unified into code names (Customer A / MPP data warehouse / code name ALPHA) to eliminate legal risk; v1.3.2 further desensitization: de-identified `rollup_program_wbs.py` example mappings (SOW slug suffix stripped / Wave→Stream / removed 客户系统A·客户系统B·示例主题域); v1.3.3 added the English `README.en.md` and established the "Chinese and English bilingual doc sync" rule; v1.3.4 **Mermaid rendering stability + SOW-level WBS mandatory expert breakdown**; v1.3.5 **WBS→schedule deliverables (build_schedule/build_wbs) + per-SOW kickoff (build_sow_kickoff) + risk register color icons (sev_icon)**; v1.3.6 **program-level scheduling (build_schedule --level program) + SOW sub-plan (--sow) + Mermaid milestone syntax fix + portfolio dashboard color icons (sev_icon); OpenClaw English package runtime output anglicized**).
 
-> **文档同步规则**：每次技能变更须同步更新 `README.md`（中文）与 `README.en.md`（英文）两份文档，并与 `SKILL.md` / `CHANGELOG.md` / 版本号保持一致；英文版与 OpenClaw 纯英文技能包同源生成。
+> **Doc sync rule**: Every skill change must sync-update both `README.md` (Chinese) and `README.en.md` (English), and stay consistent with `SKILL.md` / `CHANGELOG.md` / version number; the English version is generated from the same source as the pure-English OpenClaw skill package.
 
----
-
-_PM Master · 让项目管理真正"可执行"。_
+_PM Master · Making project management truly "executable."_

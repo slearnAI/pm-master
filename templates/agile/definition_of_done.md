@@ -1,11 +1,11 @@
-# 完成定义（DoD）· {{ project.name }}
+# Definition of Done (DoD) · {{ project.name }}
 
-> 每个区域定义"完成"的验收清单；工作项须勾选所在区域全部条目，方可视为 Done。
+> Each area defines an acceptance checklist for "Done"; a work item must have all entries in its area checked off before it can be considered Done.
 
 {{#each dod}}
 ## {{this.area}}
 
-> 本区域完成标准（全部勾选方视为该维度完成）：
+> Completion criteria for this area (all items must be checked before this dimension is considered Done):
 
 {{#each this.checklist}}
 - [ ] {{this}}
@@ -13,4 +13,4 @@
 
 {{/each}}
 
-> 说明：DoD 是质量门槛而非工作量指标；未达标不得计入 Sprint 交付。
+> Note: The DoD is a quality gate, not a workload metric; anything that does not meet it cannot be counted as a Sprint deliverable.
