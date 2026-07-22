@@ -116,7 +116,9 @@ def main():
     sm = roll['summary']
     print(f"{'合计':<10}{'':>10}{sm['bac']:>14.0f}{sm['ev']:>14.0f}{sm['ac']:>14.0f}{sm['eac']:>14.0f}")
     if sm.get('cpi') is not None:
-        print(f"项目群 CPI(估算)={sm['cpi']:.3f}  EAC vs BAC 偏差={sm['eac_vs_bac_var']:.0f}")
+        var = sm.get('eac_vs_bac_var')
+        var_txt = f"{var:.0f}" if isinstance(var, (int, float)) else 'n/a'
+        print(f"项目群 CPI(估算)={sm['cpi']:.3f}  EAC vs BAC 偏差={var_txt}")
 
 
 if __name__ == '__main__':

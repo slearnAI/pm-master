@@ -50,6 +50,31 @@ def load_config():
 RENDER = os.path.join(HERE, 'render.py')
 CONSISTENCY = os.path.join(HERE, 'consistency_check.py')
 
+# ---- 统一状态常量（避免各支柱内联 hardcode 导致 '已降降' 类错字）----
+DONE_STATES = {'done', 'complete', 'completed', '完成', '已完成'}
+CLOSED_STATES = {'closed', '已关闭', '关闭', 'resolved', '已解决',
+                 'retired', '已退役', '退役'}
+CANCELLED_STATES = {'cancelled', 'canceled', '已取消', '取消',
+                    'descoped', '已降级', '移出范围', 'out-of-scope',
+                    'terminated', '已终止', '终止', 'deferred', '已延期搁置'}
+NOT_OVERDUE_STATES = DONE_STATES | CLOSED_STATES | CANCELLED_STATES
+NON_WORKING_STATES = CANCELLED_STATES
+RISK_INACTIVE_STATES = CLOSED_STATES | CANCELLED_STATES | DONE_STATES
+
+
+def _norm_status(v):
+    """状态归一：小写 + 兼容中英文同义词。"""
+    if v is None:
+        return ''
+    s = str(v).strip().lower()
+    if s in ('已取消',):
+        return 'cancelled'
+    if s in ('取消', '移出范围'):
+        return 'descoped'
+    if s in ('终止', '已终止'):
+        return 'terminated'
+    return s
+
 
 def load(path):
     if yaml is None:
@@ -136,6 +161,12 @@ def compute(data, bdata, as_of):
     overdue_pkgs = []
     schedule_rows = []
     for w in bl_wbs:
+        # 汇总包(summary)是标签行，其估算是子叶子的 rollup；纳入会重复计数，跳过。
+        if w.get('summary'):
+            continue
+        # 已取消/降级/终止/移出范围的包不计入进度控制（非在办工作，不算逾期）。
+        if _norm_status(w.get('status')) in NON_WORKING_STATES:
+            continue
         est = w.get('estimate') or 0
         try:
             est = float(est)
@@ -320,6 +351,8 @@ def compute(data, bdata, as_of):
     risk_red = False
     for r in cur_risks:
         rid = r.get('id')
+        if _norm_status(r.get('status')) in RISK_INACTIVE_STATES:
+            continue  # 已关闭/已解决/已取消的风险不算活跃漂移
         bl = bl_risks.get(rid)
         if bl and isinstance(r.get('score'), (int, float)) and isinstance(bl.get('score'), (int, float)):
             if r['score'] > bl['score']:
@@ -404,9 +437,16 @@ def compute(data, bdata, as_of):
     # 贴合 lifecycle.md §5：waterfall/hybrid 须 planning→baselined→operational 强制串行。
     # 控制引擎只在 operational 下做正式巡检；未进入则告警（AMBER），不误报为 RED 升级。
     ls = str((data.get('project') or {}).get('lifecycle_state') or 'planning').lower()
+    # 已收尾终态：程序/项目已通过收尾门正式关闭，已超过运营控制阶段，不应再报 gate_not_operational。
+    TERMINAL_LS = {'closed', 'closeout', '收尾', '已关闭', '终止', 'terminated',
+                   'cancelled', 'archived', '已归档'}
     if ls == 'operational':
         gate_status = 'GREEN'
         gate_detail = '已通过控制门，处于运营控制阶段（lifecycle_state=operational），控制引擎正常巡检。'
+    elif ls in TERMINAL_LS:
+        gate_status = 'GREEN'
+        gate_detail = (f'已进入终态（lifecycle_state={ls}）：项目/程序已经收尾门正式关闭，'
+                       '已超过运营控制阶段；本次仅为历史对照，不再要求 operational。')
     elif ls == 'baselined':
         gate_status = 'AMBER'
         gate_detail = ('已基线化但未置 lifecycle_state=operational；本次仍按基线对照，'
@@ -418,7 +458,7 @@ def compute(data, bdata, as_of):
                        f'（先 baseline.py --freeze → 控制门 → operational）。')
     controls.append({'name': '控制门 Gate', 'status': gate_status,
                      'detail': gate_detail, 'key': 'gate'})
-    if ls != 'operational':
+    if ls not in ({'operational'} | TERMINAL_LS):
         escalations.append('gate_not_operational')
 
     # ---------- 7. 数据完整性 Integrity ----------

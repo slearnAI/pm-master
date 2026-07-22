@@ -118,6 +118,105 @@ def rerender_charter(project_yaml, data, dry):
     return [f"program_charter -> {p}"]
 
 
+def rerender_change_log(project_yaml, data, dry):
+    """change_log 模板读 this.description，但事实源常存 title —— 在此做 title→description 映射，
+    杜绝"事实源有 CR、渲染出空壳"的字段错配漂移。"""
+    changes = data.get('change_log') or data.get('changes') or []
+    if not changes:
+        return ["（无 change_log，跳过）"]
+    out_rel = data.get('artifacts', {}).get('change_log') or os.path.join('plans', 'change_log.md')
+    if dry:
+        return [f"[dry] change_log -> {out_rel}"]
+    mapped = []
+    for c in changes:
+        mapped.append({
+            'id': c.get('id'),
+            'date': c.get('approved') or c.get('raised') or c.get('date') or '',
+            'type': c.get('type') or 'change',
+            'description': (c.get('description') or c.get('title') or ''),
+            'status': c.get('status') or '',
+            'impact': c.get('impact') or '',
+            'decision': c.get('decision') or '',
+        })
+    ctx = {'project': data.get('project', {}), 'changes': mapped}
+    pp = _render_doc(project_yaml, 'templates/common/change_log.md', ctx, out_rel, data)
+    return [f"change_log -> {pp}"]
+
+
+def rerender_raid(project_yaml, data, dry):
+    """raid_log: assumptions 必须是纯字符串列表（模板 - {{this}}）；dict 自动展平。"""
+    raid = data.get('raid') or {}
+    if not raid:
+        return ["（无 raid，跳过 raid_log）"]
+    out_rel = data.get('artifacts', {}).get('raid_log') or os.path.join('risks', 'raid_log.md')
+    if dry:
+        return [f"[dry] raid_log -> {out_rel}"]
+    norm = dict(raid)
+    assum = raid.get('assumptions') or []
+    flat = []
+    for a in assum:
+        if isinstance(a, dict):
+            flat.append(a.get('description') or a.get('text') or '; '.join(f"{k}={v}" for k, v in a.items()))
+        else:
+            flat.append(str(a))
+    norm['assumptions'] = flat
+    ctx = {'project': data.get('project', {}), 'raid': norm}
+    pp = _render_doc(project_yaml, 'templates/common/raid_log.md', ctx, out_rel, data)
+    return [f"raid_log -> {pp}"]
+
+
+def rerender_evm_report(project_yaml, data, dry):
+    """evm_report.txt: 由 evm.py 依据 metrics.evm 现值重算，杜绝 EVM 报告与事实源脱节。"""
+    import subprocess as sp
+    evm = (data.get('metrics') or {}).get('evm') or {}
+    if not evm:
+        return ["（无 metrics.evm，跳过 evm_report）"]
+    root = os.path.dirname(os.path.abspath(project_yaml))
+    out_rel = data.get('artifacts', {}).get('evm_report') or os.path.join('metrics', 'evm_report.txt')
+    if dry:
+        return [f"[dry] evm_report -> {out_rel}"]
+    tmp = os.path.join(root, '.evm_tmp.yaml')
+    _save_yaml(tmp, {'pv': evm.get('pv', 0), 'ev': evm.get('ev', 0),
+                     'ac': evm.get('ac', 0), 'bac': evm.get('bac')})
+    out_path = os.path.join(root, out_rel)
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+    r = sp.run([sys.executable, os.path.join(SCRIPT_DIR, 'evm.py'), '--data', tmp],
+               capture_output=True, text=True)
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(r.stdout)
+    try:
+        os.remove(tmp)
+    except OSError:
+        pass
+    return [f"evm_report -> {out_path} (rc={r.returncode})"]
+
+
+def rerender_baseline_record(project_yaml, data, dry):
+    """baseline_record + control_register: 按 project.yaml 现值重渲染（绝不改 lifecycle_state），
+    适合收尾后刷新。与 baseline.py 内部渲染同源，但此处只渲染、不落状态。"""
+    out = []
+    arts = data.get('artifacts', {}) or {}
+    br = arts.get('baseline_record') or os.path.join('artifacts', 'baseline_record.md')
+    cr = arts.get('control_register') or os.path.join('artifacts', 'control_register.md')
+    if dry:
+        return [f"[dry] baseline_record -> {br}", f"[dry] control_register -> {cr}"]
+    import subprocess as sp
+    root = os.path.dirname(os.path.abspath(project_yaml))
+    RENDER = os.path.join(SCRIPT_DIR, 'render.py')
+    for tpl_rel, out_rel in (('templates/common/baseline_record.md', br),
+                             ('templates/common/control_register.md', cr)):
+        tpl = os.path.join(SCRIPT_DIR, '..', tpl_rel)
+        if not os.path.exists(tpl):
+            out.append(f"⚠ 模板不存在 {tpl_rel}")
+            continue
+        op = os.path.join(root, out_rel)
+        os.makedirs(os.path.dirname(os.path.abspath(op)), exist_ok=True)
+        r = sp.run([sys.executable, RENDER, '--template', tpl, '--data', project_yaml, '--out', op],
+                   capture_output=True, text=True)
+        out.append(f"{os.path.basename(out_rel)} -> {op} (rc={r.returncode})")
+    return out
+
+
 def rerender_schedules(project_yaml, data, dry):
     """P1-5: 重渲染排期甘特 + 排期健康度（调用 build_schedule / schedule_health / render_docx）。"""
     import subprocess as sp
@@ -147,7 +246,8 @@ def main():
     ap = argparse.ArgumentParser(description="PM Master · SSOT 重渲染器")
     ap.add_argument('--project', required=True)
     ap.add_argument('--only', default=None,
-                    choices=['wbs', 'risk_register', 'program_charter', 'schedules'])
+                    choices=['wbs', 'risk_register', 'program_charter', 'change_log',
+                             'raid_log', 'evm_report', 'baseline_record', 'schedules'])
     ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args()
 
@@ -155,7 +255,9 @@ def main():
         raise SystemExit("需要 PyYAML")
     data = _load(a.project)
     done = []
-    targets = [a.only] if a.only else ['wbs', 'risk_register', 'program_charter', 'schedules']
+    targets = [a.only] if a.only else ['wbs', 'risk_register', 'program_charter',
+                                          'change_log', 'raid_log', 'evm_report',
+                                          'baseline_record', 'schedules']
     for t in targets:
         if t == 'wbs':
             done += rerender_wbs(a.project, data, a.dry_run)
@@ -163,6 +265,14 @@ def main():
             done += rerender_risk(a.project, data, a.dry_run)
         elif t == 'program_charter':
             done += rerender_charter(a.project, data, a.dry_run)
+        elif t == 'change_log':
+            done += rerender_change_log(a.project, data, a.dry_run)
+        elif t == 'raid_log':
+            done += rerender_raid(a.project, data, a.dry_run)
+        elif t == 'evm_report':
+            done += rerender_evm_report(a.project, data, a.dry_run)
+        elif t == 'baseline_record':
+            done += rerender_baseline_record(a.project, data, a.dry_run)
         elif t == 'schedules':
             done += rerender_schedules(a.project, data, a.dry_run)
     print("[rerender]")

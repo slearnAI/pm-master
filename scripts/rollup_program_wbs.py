@@ -93,6 +93,22 @@ def clean(row):
     return {k: v for k, v in row.items() if v is not None}
 
 
+# 取消/终止态，则里程碑行也应携带 cancelled 状态，避免控制引擎误报逾期。
+_CANCELLED_LEAF_STATES = {'cancelled', 'canceled', '已取消', '取消',
+                          'descoped', '已降级', '移出范围', 'out-of-scope',
+                          'terminated', '已终止', '终止'}
+
+
+def _rollup_status(items):
+    """根据叶子包状态汇总里程碑状态：全部取消/终止→cancelled；否则不设（由进度%推导）。"""
+    if not items:
+        return None
+    sts = {str(i.get('status', '')).lower() for i in items}
+    if sts and sts <= _CANCELLED_LEAF_STATES:
+        return 'cancelled'
+    return None
+
+
 def build_milestone(top, phase, items, prev_id, label=None):
     ests = [float(i.get('estimate') or 0) for i in items]
     est = round(sum(ests), 1)
@@ -120,6 +136,9 @@ def build_milestone(top, phase, items, prev_id, label=None):
     }
     if prev_id:
         row['dependsOn'] = prev_id
+    rolled = _rollup_status(items)
+    if rolled:
+        row['status'] = rolled
     return clean(row), [i['id'] for i in items]
 
 
