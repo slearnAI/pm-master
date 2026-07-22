@@ -44,7 +44,8 @@ try:
 except ImportError:
     yaml = None
 
-from schedule_health import _parse_deps, _parse_duration_days  # 复用工期/依赖解析
+from schedule_health import (_parse_deps, _parse_duration_days, compute_schedule,
+                             _resolve_effort_duration, _parse_deps_typed, _enhanced_active)
 
 
 def _load(path):
@@ -291,6 +292,7 @@ def main():
                     help="排期颗粒度：task=按任务(默认)；fortnight=按双周(2-week)桶聚合显示")
     ap.add_argument('--out', default=None, help="输出 .md 路径（覆盖默认）")
     ap.add_argument('--no-write-back', action='store_true', help="只渲染排期，不回写 project.yaml 的 wbs 日期")
+    ap.add_argument('--no-level', action='store_true', help="关闭资源级联（纯 CPM，覆盖 control.scheduling.leveling）")
     ap.add_argument('--template', default=None, help="排期模板路径")
     a = ap.parse_args()
 
@@ -322,7 +324,23 @@ def main():
         project_start = datetime.date.today()
         print(f"[schedule] 未指定起始日，使用今天 {project_start.isoformat()}（建议用 --start 或填 project.start_date）")
 
-    sched = forward_schedule(wbs, project_start, include_ids)
+    sched_cfg = (data.get('control') or {}).get('scheduling') or {}
+    resources = data.get('resources') or []
+    use_enhanced = _enhanced_active(data)
+    if use_enhanced:
+        level_on = bool(sched_cfg.get('leveling', True))
+        level = (not a.no_level) and level_on
+        res = compute_schedule(wbs, resources=resources, sched_cfg=sched_cfg,
+                               include_ids=include_ids, level=level, recompute=True)
+        sched = {}
+        for tid, td in res['tasks'].items():
+            if td['es'] is None:
+                continue
+            s = project_start + datetime.timedelta(days=td['es'])
+            e = project_start + datetime.timedelta(days=td['ef'])
+            sched[tid] = (s, e, td['milestone'])
+    else:
+        sched = forward_schedule(wbs, project_start, include_ids)
 
     if not a.no_write_back and include_ids is None and a.level in ('auto', 'full'):
         # 仅 full 视图（拥有完整叶子图）才回写日期；program/SOW 视图是只读视图，不改动索引
@@ -348,12 +366,22 @@ def main():
         s, e, milestone = sched.get(tid, (None, None, False))
         # duration 用回算后的真实工期（汇总包为子项 rollup 跨度；叶子为自身工期）
         dur = (e - s).days if (s and e) else _parse_duration_days(w)
+        # 可读的依赖标签：SOW1.2(SS-5d) / SOW1.1(FS)
+        deps_typed = _parse_deps_typed(w.get('dependsOn'))
+        dep_labels = []
+        for d in deps_typed:
+            lag = d.get('lag') or 0
+            if lag:
+                dep_labels.append(f"{d['id']}({d['type']}{lag:+.0f}d)")
+            else:
+                dep_labels.append(f"{d['id']}({d['type']})")
         tasks.append({
             'id': tid,
             'name': w.get('name', tid),
             'duration': dur,
             'is_summary': bool(w.get('summary')),
             'deps': _parse_deps(w.get('dependsOn')),
+            'dep_label': ', '.join(dep_labels),
             'start': s.isoformat() if s else (w.get('start') or ''),
             'end': e.isoformat() if e else (w.get('end') or ''),
             'milestone': milestone,

@@ -120,13 +120,16 @@ def has_estimate(est):
 
 
 def parse_deps(dep):
-    """dependsOn 兼容 列表 与 逗号分隔字符串 两种写法。"""
+    """dependsOn 兼容 列表 与 逗号分隔字符串 两种写法；同时支持 {id,type,lag} 字典项。"""
     if dep is None:
         return []
     if isinstance(dep, list):
         out = []
         for x in dep:
-            sx = str(x).strip()
+            if isinstance(x, dict):
+                sx = str(x.get('id') or x.get('to') or '').strip()
+            else:
+                sx = str(x).strip()
             if sx and sx not in ('—', '-'):
                 out.append(sx)
         return out
@@ -219,7 +222,9 @@ def main():
     # ---- 6. 估算强制 ----
     wbs = data.get('wbs') or []
     if wbs:
-        missing = [w.get('id', '?') for w in wbs if not has_estimate(w.get('estimate'))]
+        missing = [w.get('id', '?') for w in wbs
+                   if not w.get('milestone')
+                   and not has_estimate(w.get('estimate')) and not has_estimate(w.get('effort'))]
         if missing:
             problems.append(
                 f"WBS 估算缺失（控制级）：以下工作包无数值化估算(>0)：{', '.join(missing)}"

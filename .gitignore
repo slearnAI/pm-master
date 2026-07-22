@@ -1,4 +1,13 @@
+# PM Master v2
 __pycache__/
 *.pyc
-_user_meta.json
-*.bak-*
+*.pyo
+.DS_Store
+*.swp
+*.swo
+*~
+.venv/
+venv/
+node_modules/
+dist/
+*.egg-info/

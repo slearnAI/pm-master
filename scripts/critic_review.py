@@ -43,7 +43,15 @@ def parse_deps(dep):
     if dep is None:
         return []
     if isinstance(dep, list):
-        return [str(x).strip() for x in dep if str(x).strip() and str(x).strip() not in ('—', '-')]
+        out = []
+        for x in dep:
+            if isinstance(x, dict):
+                sx = str(x.get('id') or x.get('to') or '').strip()
+            else:
+                sx = str(x).strip()
+            if sx and sx not in ('—', '-'):
+                out.append(sx)
+        return out
     s = str(dep).strip()
     if s in ('', '—', '-'):
         return []
@@ -154,11 +162,19 @@ def main():
     ids = {w.get('id') for w in wbs}
     orphan = []
     dangling = []
+    # 被他人依赖的 id 集合（有后继即非孤立，允许作为起始节点无前置）
+    referenced = set()
+    for w in wbs:
+        for d in parse_deps(w.get('dependsOn')):
+            referenced.add(d)
     for w in wbs:
         if w.get('summary'):
             continue
         deps = parse_deps(w.get('dependsOn'))
-        if not deps:
+        is_ms = w.get('milestone')
+        if is_ms and w.get('components'):
+            continue
+        if not deps and not is_ms and w.get('id') not in referenced:
             orphan.append(w.get('id'))
         for d in deps:
             if d not in ids:

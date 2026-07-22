@@ -5,7 +5,7 @@
 | ID | Task | Duration (days) | Predecessor Dependencies | Start | End | Milestone |
 |----|------|----------|----------|------|------|--------|
 {{#each tasks}}
-| {{this.id}} | {{this.name}} | {{this.duration}} | {{this.deps}} | {{this.start}} | {{this.end}} | {{#if this.milestone}}Yes{{else}}No{{/if}} |
+| {{this.id}} | {{this.name}} | {{this.duration}} | {{this.dep_label}} | {{this.start}} | {{this.end}} | {{#if this.milestone}}Yes{{else}}No{{/if}} |
 {{/each}}
 
 {{#if (eq granularity "fortnight")}}
