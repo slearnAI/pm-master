@@ -245,7 +245,7 @@ def main():
         if os.path.exists(tpl):
             rendered = render(open(tpl, 'r', encoding='utf-8').read(), {
                 'project': proj, 'results': results, 'findings': findings,
-                'divergence': DIVERGENCE, 'basis_floor': ESTIMATE_BASIS_FLOOR,
+                'divergence_pct': int(DIVERGENCE * 100), 'basis_floor': int(ESTIMATE_BASIS_FLOOR),
             })
             out_dir = os.path.join(root, 'plans')
             os.makedirs(out_dir, exist_ok=True)
