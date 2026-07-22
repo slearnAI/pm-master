@@ -14,7 +14,7 @@
   - `--only` 选项扩展覆盖上述类型。
 - **rollup_program_wbs.py**：新增 `_rollup_status()`，叶子包全为取消/终止态时里程碑行携带 `cancelled`，避免控制引擎误报逾期。
 - **rollup_subprojects.py**：`eac_vs_bac_var` 为 None 时回退 `n/a`，避免 None 格式化崩溃。
-- 验证：对 TAL M3 Lift 项目复跑控制引擎/重渲染，原误报消失；机密性扫描 exit 0。
+- 验证：对示例客户项目复跑控制引擎/重渲染，原误报消失；机密性扫描 exit 0。
 
 ## 2.2.12 (2026-07-21)
 - **域无关 + SOW 自动对齐**：消除开箱即偏向数据域的硬编码默认（`data-architect`/`etl-engineer`/`data-modeler`/`requirements-analyst`）。
