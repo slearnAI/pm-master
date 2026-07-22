@@ -18,6 +18,12 @@ PM Master · 领域 + 专家角色目录（单一事实源 / single source of tr
 由 `specialize()` 按 project.domain / project.product 代入，绝不硬编码客户/厂商标识。
 """
 from __future__ import annotations
+import os
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 # ---------------------------------------------------------------------------
 # 跨域角色（适用于任意技术域）
@@ -364,3 +370,91 @@ if __name__ == '__main__':
           infer_role('后端 API 实现', 'software-dev'))
     print("specialize (data-architect, data-platform, 客户数仓):",
           specialize('data-architect', 'data-platform', '云数仓'))
+
+
+# ---------------------------------------------------------------------------
+# 参数法估算锚点（estimator-agent 使用）
+# ---------------------------------------------------------------------------
+# key: (role, domain) | role ; value: (rate, unit, note)
+# rate 含义：每「unit」规模所需的人天。estimator-agent 取 rate * scale * 校准因子。
+# 域专属 anchors 优先于跨域 role 锚点。无匹配锚点时回退到原 estimate（不捏造）。
+EFFORT_ANCHORS = {
+    ('etl-engineer', 'data-platform'): (1.2, 'table', '单表迁移/历史加载 ~1.2 人天/表（含校验）'),
+    ('data-architect', 'data-platform'): (1.5, 'table', '模型设计 ~1.5 人天/核心表'),
+    ('data-governance-lead', 'data-platform'): (0.8, 'entity', '主数据/治理 ~0.8 人天/实体'),
+    ('infra-engineer', 'data-platform'): (1.0, 'node', '环境/容量 ~1.0 人天/节点'),
+    ('backend-engineer', 'software-dev'): (1.0, 'api', 'API 实现 ~1.0 人天/端点'),
+    ('frontend-engineer', 'software-dev'): (1.2, 'screen', '前端界面 ~1.2 人天/屏'),
+    ('solution-architect', 'software-dev'): (1.5, 'module', '架构/集成 ~1.5 人天/模块'),
+    ('cloud-architect', 'cloud-infra'): (1.5, 'service', '云架构 ~1.5 人天/服务'),
+    ('devops-engineer', 'cloud-infra'): (1.0, 'pipeline', 'CI/CD ~1.0 人天/流水线'),
+    ('ml-engineer', 'ai-ml'): (2.0, 'model', '模型训练/微调 ~2.0 人天/模型'),
+    ('data-scientist', 'ai-ml'): (1.5, 'experiment', '实验/特征 ~1.5 人天/实验'),
+    ('security-engineer', 'cybersecurity'): (1.5, 'control', '安全控制 ~1.5 人天/项'),
+    ('qa-lead', 'qa'): (1.0, 'case', '测试用例 ~1.0 人天/用例集'),
+    ('ba', 'product'): (1.0, 'story', '用户故事 ~1.0 人天/故事'),
+    ('solution-architect', 'integration'): (1.5, 'interface', '接口/集成 ~1.5 人天/接口'),
+    ('bi-engineer', 'biz-analytics'): (1.2, 'report', '报表 ~1.2 人天/报表'),
+    ('bi-engineer', 'erp'): (1.5, 'module', 'ERP 模块 ~1.5 人天/模块'),
+}
+
+# 跨域 role 回退锚点（无 domain 匹配时）
+ROLE_FALLBACK_ANCHORS = {
+    'ba': (1.0, 'story', 'fallback'),
+    'qa-lead': (1.0, 'case', 'fallback'),
+    'infra-engineer': (1.0, 'node', 'fallback'),
+    'solution-architect': (1.5, 'module', 'fallback'),
+}
+
+
+def effort_anchor(role, domain=None):
+    """返回参数法锚点 (rate, unit, note)，无匹配返回 None。"""
+    if domain:
+        hit = EFFORT_ANCHORS.get((role, domain))
+        if hit:
+            return hit
+    # (role, None) 形式（定义里未带 domain）
+    hit = EFFORT_ANCHORS.get((role, None))
+    if hit:
+        return hit
+    return ROLE_FALLBACK_ANCHORS.get(role)
+
+
+# 兼容别名（estimator.py 调用）
+def parametric_anchor(role, domain=None):
+    return effort_anchor(role, domain)
+
+
+def load_calibration(path=None):
+    """读取共享校准因子表 references/estimate-calibration.yaml。
+    缺省路径：本文件同目录 ../references/estimate-calibration.yaml。"""
+    if path is None:
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(here, '..', 'references', 'estimate-calibration.yaml')
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f) or {}
+    except Exception:
+        return {}
+    return data.get('factors') or {}
+
+
+def calibration_factor(role, domain=None, path=None):
+    """返回 (role,domain) 校准因子；无 domain 匹配时用 (role,) 回退；缺省 1.0。"""
+    factors = load_calibration(path)
+    if domain:
+        f = factors.get(f'{role}@{domain}')
+        if f is not None:
+            try:
+                return float(f)
+            except (TypeError, ValueError):
+                return 1.0
+    f = factors.get(role)
+    if f is not None:
+        try:
+            return float(f)
+        except (TypeError, ValueError):
+            return 1.0
+    return 1.0

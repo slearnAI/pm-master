@@ -273,3 +273,20 @@ where the capability is generic (e.g. `ba`, `qa-lead`, `solution-architect`). Ea
 The `<DOMAIN>` / `<PRODUCT>` in role prompts are substituted from `project.domain` / `project.product`
 (or product name) in `project.yaml`. The role→domain→keyword routing and specialization naming are
 defined in `scripts/role_catalog.py` (single source of truth), not hardcoded here.
+
+## 4. Cross-Cutting Estimator (estimator-agent · effort calibration)
+
+Estimation is a **separate discipline** from decomposition. After a domain expert decomposes a leaf,
+the `estimator-agent` (`scripts/estimator.py`) provides an independent effort calibration:
+
+- **Trigger**: `dispatch.py` emits an `estimate` action for any domain-activity leaf whose `effort`/`estimate_method` is missing/unsupported (runs after `decompose`/`tag_role`, before `build_schedule`).
+- **Methods** (record one per leaf in `estimate_method`):
+  - `three-point`: elicit `estimate_o`/`estimate_m`/`estimate_p`; `expected=(o+4m+p)/6`, range `[o,p]`, then × calibration factor.
+  - `parametric`: use `role_catalog.EFFORT_ANCHORS[(role,domain)]` rate × scale (units in anchor); falls back to original×calibration factor if no scale field.
+  - `analogous`: anchor to a named prior project via `estimate_basis` + `analogous_base`/`analogous_ratio`; × calibration factor.
+  - `expert`: ONLY if no data; sets `estimate_confidence=low`, `estimate_source=expert`.
+- **Calibration**: shared table `references/estimate-calibration.yaml` → `factors: { 'role@domain': f }`, `f = mean(actual/estimate)` from closed leaves; `calibrate_estimates.py` maintains it.
+- **Divergence rule**: if `|expected − original| / original > 20%` ⇒ set `effort=expected`, `estimate_flag=recalibrated`, explain in report; never silently accept.
+- **Basis floor**: `effort ≥ 5 person-days` requires `estimate_basis` (mandatory, warning in `consistency_check` §7e).
+- **Split guard**: if calibrated `effort > control.granularity_threshold` ⇒ `estimate_flag=split-needed`, do NOT inflate; master re-dispatches decomposition.
+- **system_prompt**: `You are PM Master's estimator-agent. You do NOT decompose work — domain experts already did. For every leaf with role/domain: pick one method (three-point/parametric/analogous/expert), record it in estimate_method, apply the active (role,domain) calibration factor from the shared table, compare your expected to the decomposer's original estimate, flag divergence >20% as recalibrated, never invent actuals, and emit split-needed if effort would exceed the granularity threshold. Write data via render.py/YAML; report only to the master; do not reply to the user.`

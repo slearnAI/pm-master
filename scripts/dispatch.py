@@ -47,6 +47,22 @@ def to_float(v):
         return 0.0
 
 
+def has_estimate(est):
+    """估算须能解析出 >0 的数值；'—' / 空 / 非数字 / 0 视为缺失（与 consistency_check 一致）。"""
+    if est is None:
+        return False
+    if isinstance(est, (int, float)):
+        return est > 0
+    s = str(est).strip()
+    if s in ('', '—', '-', 'TBD', '待定', 'N/A', 'NA', 'none', 'null'):
+        return False
+    import re
+    m = re.search(r'\d+(\.\d+)?', s)
+    if not m:
+        return False
+    return float(m.group()) > 0
+
+
 def infer_role(row, name):
     """先取显式 role；否则按名称关键词（域专属 -> 跨域 -> 中立回退）。"""
     return rc.infer_role(name, row.get('domain'), explicit_role=row.get('role'))
@@ -78,6 +94,12 @@ def build_plan(data, threshold):
             actions.append('decompose')
         if is_domain_activity(role, name, dom) and not role:
             actions.append('dispatch_expert')
+        # 估算校准：领域活动叶子（或 effort 缺失/不支持）须调度 estimator-agent 做独立估算
+        has_effort = has_estimate(w.get('estimate')) or has_estimate(w.get('effort'))
+        has_method = bool(w.get('estimate_method'))
+        if (is_domain_activity(role, name, dom) or (role and role not in PM_GENERALIST)) \
+           and (not has_effort or not has_method):
+            actions.append('estimate')
         if not actions:
             continue
         expert = specialize(role, domain, product)

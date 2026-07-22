@@ -1,0 +1,11 @@
+# PM Master · Shared Estimate Calibration Table
+# ---------------------------------------------------------------------------
+# Maintained by scripts/calibrate_estimates.py --global (run on leaf closeout).
+# factors: { 'role@domain': f, 'role': f }
+#   f = mean(actual_effort / estimator_expected) over closed leaves.
+#   f > 1  => history systematically UNDER-estimated (apply upward adjustment)
+#   f < 1  => history OVER-estimated (apply downward adjustment)
+# estimator-agent reads this via role_catalog.calibration_factor(role, domain).
+# Seed empty; populated as real delivery actuals accumulate.
+factors: {}
+updated_at: null

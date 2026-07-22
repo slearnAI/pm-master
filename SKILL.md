@@ -89,6 +89,19 @@ WBS is not a PM-drafted SOW-level list; it is decomposed per domain by **domain 
 > The consistency gate is **fatal (exit 1)** for domain activities missing `role` / over threshold; the
 > orchestrator must **not** self-decompose to bypass it.
 
+### Step 2.5b · Effort calibration (estimator-agent · mandatory after decomposition)
+Decomposition ≠ estimation. After experts decompose leaves, run the independent `estimator-agent` to
+calibrate effort (fixes the v2 "single-point guess" root cause):
+1. `dispatch.py` now emits an `estimate` action for any domain-activity leaf missing `effort`/`estimate_method`;
+2. run `scripts/estimator.py --project <project.yaml>` — applies `parametric`/`three-point`/`analogous`
+   with the shared calibration factor, flags divergence >20% as `recalibrated`, emits `split-needed` if
+   over the granularity threshold (no inflation); writes back `effort`/`estimate_method`/`estimate_basis`/
+   `estimate_confidence`/`estimate_flag` per leaf;
+3. rerun `dispatch.py` to confirm 0 `estimate` actions pending.
+> `consistency_check.py` §7e adds estimate-quality warnings; `critic_review.py` §7 adds an effort-sanity lens.
+> The feedback loop closes when `calibrate_estimates.py --global` reads closed-leaf `actual_effort` back into
+> `references/estimate-calibration.yaml`.
+
 ### Step 3 · Decide execution mode
 ```
 single deliverable / tweak / analysis script   → direct (do it yourself)
@@ -192,6 +205,8 @@ render renders directly → pip install pyyaml)
 | `artifact_guard.py` | **OAG** 运营期交付物护栏（内容哈希漂移检测；`--stamp` 为手工文档记录 source_hash） | **after every operational action / before delivery** |
 | `critic_review.py` | WBS 拆解 Critic 自审（6 因素：scope/milestone/payment/assumptions/constraints/dependencies）；规划期致命、运营期降级 | after expert WBS decomposition, before `consistency_check` |
 | `dispatch.py` | expert dispatch plan (idempotent, marks done) | before WBS decomposition (Step 2.5) |
+| `estimator.py` | effort calibration (estimator-agent): recalibrate leaf effort, flag divergence>20%, emit split-needed | after expert decomposition (Step 2.5b), before `build_schedule` |
+| `calibrate_estimates.py` | feedback loop: closed-leaf `actual_effort` → shared `estimate-calibration.yaml` factors | on leaf closeout / retrospective |
 | `build_wbs.py` | render WBS view | waterfall/hybrid planning |
 | `build_schedule.py` | WBS→schedule+Gantt (`--level program`/`--sow <ID>`) | waterfall/hybrid planning |
 | `build_sow_kickoff.py` | per-SOW kickoff artifacts | waterfall/hybrid planning |

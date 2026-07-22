@@ -43,7 +43,14 @@ Sub-Agents **never reach the user directly**; they only produce files and report
 - **Output**: `docs/program_charter.md`, `reports/portfolio_dashboard.md`, `risks/dependency_map.md`, `reports/benefits_realization.md`; write back `program.projects[]` / `program.dependencies[]` / `program.benefits[]`.
 - **brief essentials**: focus on "dependencies, coordination, benefits" rather than single-project details.
 
-## 7. Master Controller Aggregation Checklist
+## 6b. estimator-agent (effort-calibration · cross-cutting)
+- **Responsibility**: independently calibrate the **effort** of each domain-activity leaf after experts decompose it. Does NOT decompose work. Picks one method per leaf (three-point / parametric / analogous / expert), applies the shared `(role,domain)` calibration factor, and flags divergence >20% from the decomposer's original estimate as `recalibrated`. Never invents actuals; missing history ⇒ `estimate_confidence=low`. If calibrated effort would exceed the granularity threshold, emits `split-needed` (no inflation) for the master to re-dispatch decomposition.
+- **Why a separate agent**: decomposition ≠ estimation. The expert who breaks work into leaves also throws a single point estimate with no method/bias-check. `estimator-agent` is the independent second opinion that closes this gap (root cause R1–R5 in the estimator design doc).
+- **Input**: `project.yaml` (decomposed `wbs` with `role`/`domain`); `scripts/role_catalog.py` (parametric anchors + shared calibration table).
+- **Output**: writes back per leaf `effort` / `estimate_method` / `estimate_basis` / `estimate_o`/`estimate_p` / `estimate_confidence` / `estimate_source` / `estimate_flag` (and `estimate` as a backward-compatible alias); `plans/estimate_report.md` (via `render.py`); console key findings for the master to aggregate.
+- **How dispatched**: `dispatch.py` emits an `estimate` action for every domain-activity leaf missing `effort`/`estimate_method`; the master runs `scripts/estimator.py --project <project.yaml>` after expert decomposition and before `build_schedule.py`.
+- **Guardrails (hard)**: read `project.yaml` first (source of truth); numeric `effort>0` only; method ∈ {three-point, parametric, analogous, expert}; `estimate_basis` mandatory when `effort ≥ 5pd`; missing history ⇒ `estimate_confidence=low` (never fabricated); divergence >20% must be flagged, not silently accepted; independent of the decomposer (no self-approval); render via `render.py`; report only to master; never modify other agents' files.
+- **Complementary**: `consistency_check.py` §7e adds estimate-quality warnings; `critic_review.py` §7 adds an effort-sanity lens; `calibrate_estimates.py` feeds closed-leaf `actual_effort` back into the shared factor table.
 - [ ] All role artifact files have been generated
 - [ ] `consistency_check.py` passes (risks have owner/mitigation, pm/sponsor filled, dependencies complete)
 - [ ] `artifacts` index has been written back

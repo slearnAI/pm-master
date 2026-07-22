@@ -430,6 +430,54 @@ def main():
                 f"WBS {wid}『{name}』估算 {est_v:g} 人天超过叶子包阈值 {gran_thr:g}，"
                 f"建议进一步拆解（非领域活动，仅告警）。")
 
+    # ---- 7e. 估算质量门（estimator-agent 回写，向后兼容：缺新字段仅告警不致命） ----
+    # 设计意图：每个领域活动叶子须有可辩护的估算方法 + 依据，杜绝 v2 "单点拍脑袋" 估算。
+    # 旧项目（仅 estimate、无 estimate_method）在规划期给告警（提示运行 estimator-agent），
+    # 不阻断；新项目在 estimator-agent 跑过后应补齐。recalibrated 叶子须有 basis 附注。
+    EST_FLOOR = 5.0           # 与 estimator-agent 一致的强制 basis 门槛
+    valid_methods = {'three-point', 'parametric', 'analogous', 'expert'}
+    for w in wbs:
+        if w.get('summary') or w.get('milestone') or (w.get('tier') == 'program'):
+            continue
+        wid = w.get('id', '?')
+        name = w.get('name') or ''
+        role = infer_role(w, name)
+        dom = w.get('domain')
+        if not is_domain_activity(role, name, dom):
+            continue
+        eff = w.get('effort')
+        est = w.get('estimate') if eff is None else eff
+        try:
+            ev = float(est)
+        except (TypeError, ValueError):
+            ev = 0.0
+        method = str(w.get('estimate_method') or '').lower()
+        basis = w.get('estimate_basis')
+        flag = w.get('estimate_flag')
+        if method and method not in valid_methods:
+            warnings.append(
+                f"WBS {wid}『{name}』estimate_method='{method}' 非法（须 three-point/parametric/analogous/expert）；"
+                f"建议重跑 estimator-agent。")
+        if method and ev >= EST_FLOOR and not basis:
+            warnings.append(
+                f"WBS {wid}『{name}』effort={ev:g}≥{EST_FLOOR:g} 但缺 estimate_basis（须记录估算依据）；"
+                f"建议重跑 estimator-agent。")
+        if flag == 'split-needed':
+            warnings.append(
+                f"WBS {wid}『{name}』estimate_flag=split-needed：校准后 effort 超颗粒度阈值，"
+                f"须交主控重派专家拆为 ≤{gran_thr:g} 的叶子包。")
+        if not method and ev >= EST_FLOOR:
+            # 旧式单点估算（未跑 estimator-agent）：规划期告警，不致命（保护既有实时项目）
+            warnings.append(
+                f"WBS {wid}『{name}』为单点估算（缺 estimate_method/basis），规划期建议运行 estimator-agent 校准；"
+                f"本轮不阻断。")
+            continue
+        if flag in (None, 'tbd'):
+            warnings.append(
+                f"WBS {wid}『{name}』缺 estimate_flag（estimator-agent 未回写）；"
+                f"建议重跑 estimator-agent。")
+
+
     # ---- 7c. 项目群：SOW 映射 ↔ WBS 一致（合同边界防漂移） ----
     # 仅在项目群类型校验：program.sow_map[].sow 必须对应 wbs 中的 tier:program / summary 汇总包。
     if ptype == 'program':

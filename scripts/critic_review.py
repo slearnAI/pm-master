@@ -187,6 +187,27 @@ def main():
         problems.append(
             f"[dependency] 依赖指向未知 ID：{', '.join(dangling[:8])}…——须修正。")
 
+    # ---- 7. estimate sanity（补充透镜，仅告警，与 consistency/estimator 互补） ----
+    # 在拆解后（规划期）提示：超大叶子（>2× 颗粒度阈值）或明显缺 DoD 的估算包，
+    # 这类最易「拍脑袋估算」。不致命（避免阻断既有实时项目），交由 estimator-agent 校准 + 主控重拆。
+    est_thr = float((data.get('control') or {}).get('granularity_threshold') or 10.0)
+    for w in wbs:
+        if w.get('summary') or w.get('milestone') or w.get('tier') == 'program':
+            continue
+        try:
+            ev = float(w.get('effort') or w.get('estimate'))
+        except (TypeError, ValueError):
+            ev = 0.0
+        if ev > 2 * est_thr:
+            findings.append(('warn', 'estimate-outlier',
+                f"[estimate] 叶子 {w.get('id')}『{w.get('name')}』effort={ev:g} 超 2× 颗粒度阈值"
+                f"({est_thr:g})，最可能拍脑袋估算；须交专家重拆 + estimator-agent 校准。"))
+        if ev > 0 and not (w.get('deliverable') or w.get('dod') or w.get('acceptance')):
+            findings.append(('warn', 'estimate-dod',
+                f"[estimate] 叶子 {w.get('id')}『{w.get('name')}』有估算但缺 DoD/交付物，"
+                f"估算无验收锚点，estimate_confidence 应标 low。"))
+
+
     # ---- 输出 ----
     print("=== WBS 拆解 Critic 自审（6 因素） ===")
     if findings:
