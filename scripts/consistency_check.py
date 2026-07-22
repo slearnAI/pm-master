@@ -50,6 +50,12 @@ try:
 except ImportError:
     yaml = None
 
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+import role_catalog as rc  # 单一事实源：领域 + 专家角色目录（域无关）
+
+PM_GENERALIST = rc.PM_GENERALIST
+
 
 def load_config():
     """读取安装期 config.yaml；不存在时返回空 dict（惰性，避免循环依赖）。"""
@@ -142,54 +148,14 @@ def collect_risks(data):
     return list(seen.values())
 
 
-# ---------- 角色推断（对齐 activity-expert-map.md §2，单一事实源） ----------
-ROLE_KEYWORDS = [
-    ('data-architect', ['建模', '模型', '主题域', 'schema', 'erd', '数据模型', 'model', 'datamodel']),
-    ('etl-engineer', ['迁移', '历史加载', '抽取', 'etl', '加载', '接入', 'migration', 'load']),
-    ('data-security-engineer', ['脱敏', '掩码', '隐私', 'pii', '令牌', '加密', 'mask', 'privacy']),
-    ('data-scientist', ['分析', '建模', '特征', 'ml', 'modelops', '用例', 'analytic']),
-    ('dr-bcp-engineer', ['容灾', '业务连续', 'bcm', 'dr', 'rpo', 'rto', '故障切换']),
-    ('governance-lead', ['治理', '元数据', '血缘', '审计', '加固', 'governance', 'meta', 'audit', 'hardening']),
-    ('enablement-lead', ['培训', '赋能', '课程', 'training', 'enable']),
-    ('infra-engineer', ['基础设施', '安装', '环境', 'infra', 'install', 'env', '部署']),
-    ('domain-sme', ['sme', '业务知识', '源系统', '领域支持']),
-    ('qa-lead', ['测试', 'uat', '质量', 'test', 'quality']),
-    ('ba', ['需求', '用户故事', '规格', 'requirement', 'story']),
-    ('change-manager', ['变更', 'ccb', 'change']),
-    ('solution-architect', ['蓝图', '集成', '方案', 'blueprint', 'integration', 'solution']),
-]
-PM_GENERALIST = {'planner', 'scheduler', 'risk', 'stakeholder', 'reporter', 'program'}
-DOMAIN_BY_KEYWORD = {
-    'data-modelling': 'data-architect', 'modelling': 'data-architect',
-    'migration': 'etl-engineer', 'etl': 'etl-engineer',
-    'masking': 'data-security-engineer', 'privacy': 'data-security-engineer',
-    'analytics': 'data-scientist', 'ml': 'data-scientist',
-    'bcm': 'dr-bcp-engineer', 'dr': 'dr-bcp-engineer',
-    'governance': 'governance-lead', 'hardening': 'governance-lead',
-    'training': 'enablement-lead', 'enablement': 'enablement-lead',
-    'infra': 'infra-engineer', 'install': 'infra-engineer', 'sme': 'domain-sme',
-}
-
+# ---------- 角色推断（单一事实源：role_catalog.py，域无关，支持 SOW 自动对齐） ----------
 
 def infer_role(row, name):
-    if row.get('role'):
-        return row['role']
-    n = (name or '').lower()
-    for rid, kws in ROLE_KEYWORDS:
-        if any(k in n for k in kws):
-            return rid
-    return DOMAIN_BY_KEYWORD.get((row.get('domain') or '').lower())
+    return rc.infer_role(name, row.get('domain'), explicit_role=row.get('role'))
 
 
 def is_domain_activity(role, name, domain):
-    if role in PM_GENERALIST:
-        return False
-    if role:
-        return True
-    n = (name or '').lower()
-    if any(k in n for _, kws in ROLE_KEYWORDS for k in kws):
-        return True
-    return bool(domain)
+    return rc.is_domain_activity(role, name, domain)
 
 
 def main():

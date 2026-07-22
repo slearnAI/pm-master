@@ -12,7 +12,7 @@ PM Master · 专家调度计划生成器（Expert Dispatch Planner）
 实际拆解由主控按计划派出领域专家子 Agent 完成（见 references/expert-roles.md /
 activity-expert-map.md）。本脚本只做审计与计划，不改动 project.yaml。
 
-路由表与 references/activity-expert-map.md §2 保持一致（单一事实源）。
+角色/域路由来自 `role_catalog.py`（单一事实源，域无关，支持从合同/SOW 自动对齐）。
 """
 import os
 import sys
@@ -24,65 +24,13 @@ try:
 except ImportError:
     yaml = None
 
+# 单一事实源：领域 + 专家角色目录（域无关，自动从 SOW/合同对齐）
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+import role_catalog as rc
 
-# ---------- 角色关键词路由（对齐 activity-expert-map.md §2） ----------
-ROLE_KEYWORDS = [
-    ('data-architect', ['建模', '模型', '主题域', 'schema', 'erd', '数据模型', 'model', 'datamodel']),
-    ('etl-engineer', ['迁移', '历史加载', '抽取', 'etl', '加载', '接入', 'migration', 'load']),
-    ('data-security-engineer', ['脱敏', '掩码', '隐私', 'pii', '令牌', '加密', 'mask', 'privacy']),
-    ('data-scientist', ['分析', '建模', '特征', 'ml', 'modelops', '用例', 'analytic']),
-    ('dr-bcp-engineer', ['容灾', '业务连续', 'bcm', 'dr', 'rpo', 'rto', '故障切换']),
-    ('governance-lead', ['治理', '元数据', '血缘', '审计', '加固', 'governance', 'meta', 'audit', 'hardening']),
-    ('enablement-lead', ['培训', '赋能', '课程', 'training', 'enable']),
-    ('infra-engineer', ['基础设施', '安装', '环境', 'infra', 'install', 'env', '部署']),
-    ('domain-sme', ['sme', '业务知识', '源系统', '领域支持']),
-    ('qa-lead', ['测试', 'uat', '质量', 'test', 'quality']),
-    ('ba', ['需求', '用户故事', '规格', 'requirement', 'story']),
-    ('change-manager', ['变更', 'ccb', 'change']),
-    ('solution-architect', ['蓝图', '集成', '方案', 'blueprint', 'integration', 'solution']),
-]
-
-PM_GENERALIST = {'planner', 'scheduler', 'risk', 'stakeholder', 'reporter', 'program'}
-
-DOMAIN_SPECIALIZATION = {
-    'insurance-data-lake': {
-        'data-architect': '保险主题域数据架构师',
-        'etl-engineer': 'MPP 数仓 TPT/ETL 工程师',
-        'data-security-engineer': '个保法/PII 合规工程师',
-        'data-scientist': '保险精算/分析建模工程师',
-        'governance-lead': '保险数据治理与审计负责人',
-        'dr-bcp-engineer': '保险 BC/DR 工程师',
-        'infra-engineer': 'MPP 数仓/平台工程师',
-    },
-    'payments': {
-        'data-architect': '支付领域架构师',
-        'etl-engineer': '支付 ETL 工程师',
-        'data-security-engineer': 'PCI-DSS 安全工程师',
-        'data-scientist': '反欺诈/风控建模工程师',
-    },
-    'ecommerce': {
-        'data-architect': '电商域建模师',
-        'data-scientist': '推荐/搜索 ML 工程师',
-        'etl-engineer': '电商数据工程师',
-    },
-    'fintech-core': {
-        'data-architect': '核心银行领域架构师',
-        'etl-engineer': '账务/清算工程师',
-        'data-security-engineer': '监管报送工程师',
-    },
-}
-
-DOMAIN_BY_KEYWORD = {
-    'data-modelling': 'data-architect', 'modelling': 'data-architect',
-    'migration': 'etl-engineer', 'etl': 'etl-engineer',
-    'masking': 'data-security-engineer', 'privacy': 'data-security-engineer',
-    'analytics': 'data-scientist', 'ml': 'data-scientist',
-    'bcm': 'dr-bcp-engineer', 'dr': 'dr-bcp-engineer',
-    'governance': 'governance-lead', 'hardening': 'governance-lead',
-    'training': 'enablement-lead', 'enablement': 'enablement-lead',
-    'infra': 'infra-engineer', 'install': 'infra-engineer',
-    'sme': 'domain-sme',
-}
+PM_GENERALIST = rc.PM_GENERALIST
 
 
 def load(path):
@@ -100,43 +48,16 @@ def to_float(v):
 
 
 def infer_role(row, name):
-    """先取显式 role；否则按名称关键词；否则按 domain。"""
-    if row.get('role'):
-        return row['role']
-    n = (name or '').lower()
-    for rid, kws in ROLE_KEYWORDS:
-        if any(k in n for k in kws):
-            return rid
-    dom = (row.get('domain') or '').lower()
-    if dom in DOMAIN_BY_KEYWORD:
-        return DOMAIN_BY_KEYWORD[dom]
-    return None
+    """先取显式 role；否则按名称关键词（域专属 -> 跨域 -> 中立回退）。"""
+    return rc.infer_role(name, row.get('domain'), explicit_role=row.get('role'))
 
 
 def is_domain_activity(role, name, domain):
-    if role in PM_GENERALIST:
-        return False
-    if role:
-        return True
-    n = (name or '').lower()
-    if any(k in n for _, kws in ROLE_KEYWORDS for k in kws):
-        return True
-    if domain:
-        return True
-    return False
+    return rc.is_domain_activity(role, name, domain)
 
 
 def specialize(role, domain, product):
-    if not role:
-        return None
-    spec = DOMAIN_SPECIALIZATION.get((domain or '').lower(), {})
-    if role in spec:
-        return spec[role]
-    if product:
-        return f"{role}（{product}）"
-    if domain:
-        return f"{role}（{domain}）"
-    return role
+    return rc.specialize(role, domain, product)
 
 
 def build_plan(data, threshold):

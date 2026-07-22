@@ -1,5 +1,13 @@
 # Changelog · PM Master v2
 
+## 2.2.12 (2026-07-21)
+- **域无关 + SOW 自动对齐**：消除开箱即偏向数据域的硬编码默认（`data-architect`/`etl-engineer`/`data-modeler`/`requirements-analyst`）。
+  - 新增 `scripts/role_catalog.py`（单一事实源）：覆盖 10 个技术域（data-platform / software-dev / cloud-infra / ai-ml / cybersecurity / product / qa / integration / erp / biz-analytics）+ 跨域角色；提供 `infer_domain(text)` / `infer_role(name, domain)` / `specialize()` / `align_from_sow(spec)`。
+  - `dispatch.py` / `consistency_check.py` 改为 import `role_catalog`，删除各自重复的 `ROLE_KEYWORDS` / `DOMAIN_BY_KEYWORD` / `DOMAIN_SPECIALIZATION`。
+  - `parse_sow.py` 默认角色改为 `solution-architect`（summary/wave）与按域推断兜底 `domain-sme`（leaf），并从 SOW 文本自动写入 `domain`。
+  - 旧项目域（insurance-data-lake / payments / ecommerce / fintech-core）经 `LEGACY_SPECIALIZATION` 向后兼容，仍保留特化名。
+  - `expert-roles.md` / `activity-expert-map.md` 扩展为全技术域角色目录；`sow-parsing-playbook.md` / `program-management.md` 示例去数据偏向。
+
 ## 2.2.11 (2026-07-21)
 
 ### 机密性评审穿透化 · 新增 `confidentiality_check.py`（发布前必跑）

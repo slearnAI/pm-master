@@ -61,9 +61,9 @@
   "scope": "...",
   "out_of_scope": "...",
   "assumptions": ["≤1600 源表...", "..."],
-  "roles": ["requirements-analyst", "data-modeler", "etl-mapping-analyst", "nos-architect"],
+  "roles": ["ba", "solution-architect", "etl-engineer", "domain-sme"],
   "entry_gates": [
-    {"id": "SOW1.0", "name": "源就绪门", "acceptance": "...", "role": "requirements-analyst",
+    {"id": "SOW1.0", "name": "源就绪门", "acceptance": "...", "role": "ba",
      "duration_days": 10, "estimate": 8, "dependsOn": ["SOW9"]}
   ],
   "waves": [
@@ -72,9 +72,9 @@
       "billing": {"event": "Wave 1 Design Document post sign-off", "fee": 11645092,
                   "currency": "INR", "fee_type": "fixed"},
       "leaves": [
-        {"id": "SOW1.W1.1", "name": "源系统识别与需求剖析", "role": "requirements-analyst",
+        {"id": "SOW1.W1.1", "name": "源系统识别与需求剖析", "role": "ba",
          "duration_days": 8, "estimate": 6, "acceptance": "..."},
-        {"id": "SOW1.W1.2a", "name": "逻辑模型 FSDM", "role": "data-modeler",
+        {"id": "SOW1.W1.2a", "name": "逻辑模型 FSDM", "role": "solution-architect",
          "duration_days": 8, "estimate": 6, "acceptance": "..."}
       ]
     }

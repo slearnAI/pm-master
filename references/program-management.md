@@ -60,7 +60,7 @@ Constraints (enforced by consistency check):
 **Recommended three-level decomposition inside each SOW** (resolves the "too coarse / 4 packages × 1 role" complaint):
 1. SOW summary package (`tier: program`, `summary: true`, e.g. `SOW1`)
 2. Phase groups (`tier: component`, `summary: true`, e.g. `SOW1.1`–`SOW1.4`) — roll-up containers, **not** standalone SOWs (the kickoff engine only treats `tier: program` summaries as SOW-level, so phase groups will not spawn spurious kickoffs)
-3. **Fortnight leaf packages** (`tier: component`, ≤10 days each, e.g. `SOW1.1.1`–`SOW1.4.2`) — each independently billable/acceptable, each assigned a **distinct domain-expert role** (requirements-analyst / data-modeler / etl-mapping-analyst / nos-architect …), governed by `acceptance` / `dependsOn` / `owner`.
+3. **Fortnight leaf packages** (`tier: component`, ≤10 days each, e.g. `SOW1.1.1`–`SOW1.4.2`) — each independently billable/acceptable, each assigned a **distinct domain-expert role** inferred from the contract/SOW via `role_catalog.py` (e.g. `ba` / `solution-architect` / `etl-engineer` / `domain-sme` …), governed by `acceptance` / `dependsOn` / `owner`.
 
 Single-source-of-truth implementation (`project.yaml`):
 - `scripts/rollup_program_wbs.py` aggregates leaves by phase into milestone summary packages and tags them with `tier`;
@@ -106,7 +106,7 @@ owning sub-project and re-run the rollup (see `references/operation-model.md` §
 When parsing a SOW, the comprehension step is NOT optional — apply a chain-of-thought + critic review before writing WBS:
 
 1. **Extract the commercial structure first**: read the SOW's billing/fee section verbatim. Identify each *"<Deliverable> post sign-off"* (or equivalent) event and its fee. These become **milestone packages** (`milestone: true`) with a `billing: {event, fee_inr, currency, status}` block — they are the things to monitor and measure.
-2. **Map each billing milestone to a wave / workstream** in the SOW's scope section. Model each wave as a `summary` package containing its own source-analysis → logical-model → physical-model+DDL → S2T-mapping leaf buckets, ending in that wave's sign-off milestone.
+2. **Map each billing milestone to a wave / workstream** in the SOW's scope section. Model each wave as a `summary` package containing its own domain-expert leaf buckets (the leaf roles are inferred from the SOW text via `role_catalog.py`), ending in that wave's sign-off milestone.
 3. **Sequence billing milestones** along the commercial cadence (sequential per-sign-off is the safe default for a single architecture team; overlap only if the SOW explicitly allows parallel source sets + SME availability for the whole project).
 4. **Non-billing deliverables** (e.g. a design document with no separate fee) are still deliverable milestones, but flag `fee_inr: 0` + `note: 交付物但非独立计费事件` so they aren't mistaken for revenue events.
 5. **Every leaf package ≤ 10 人天** (the control gate hard-fails otherwise): split logical/physical/S2T activities into ≤10-day expert buckets (e.g. `W1.2a` FSDM, `W1.2b` 客户系统A, `W1.3a` Core DDL, `W1.3b` Semantic DDL). Summary/milestone packages get a rolled-up `estimate` = sum of children; milestones carry a small positive sign-off effort.

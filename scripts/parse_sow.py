@@ -33,6 +33,10 @@ except ImportError:
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+import role_catalog as rc  # 单一事实源：领域 + 专家角色目录（域无关）
+
 
 def _emit_template():
     tpl = {
@@ -43,9 +47,9 @@ def _emit_template():
         "scope": "in-scope（逐字）",
         "out_of_scope": "out-of-scope（逐字）",
         "assumptions": ["假设1（变更触发）", "假设2"],
-        "roles": ["requirements-analyst", "data-modeler"],
+        "roles": ["ba", "solution-architect"],
         "entry_gates": [
-            {"id": "SOW1.0", "name": "进入条件/数据就绪门", "role": "requirements-analyst",
+            {"id": "SOW1.0", "name": "进入条件/数据就绪门", "role": "ba",
              "duration_days": 10, "estimate": 8, "acceptance": "SME+真实数据+接口文档齐备",
              "dependsOn": []}
         ],
@@ -55,9 +59,9 @@ def _emit_template():
                 "billing": {"event": "Wave 1 Design Document post sign-off",
                             "fee": 11645092, "currency": "INR", "fee_type": "fixed"},
                 "leaves": [
-                    {"id": "SOW1.W1.1", "name": "源分析", "role": "requirements-analyst",
+                    {"id": "SOW1.W1.1", "name": "源分析", "role": "ba",
                      "duration_days": 8, "estimate": 6, "acceptance": "源接口文档齐备"},
-                    {"id": "SOW1.W1.2a", "name": "逻辑模型", "role": "data-modeler",
+                    {"id": "SOW1.W1.2a", "name": "逻辑模型", "role": "solution-architect",
                      "duration_days": 8, "estimate": 6, "acceptance": "逻辑 ERD 评审通过"}
                 ]
             }
@@ -66,7 +70,7 @@ def _emit_template():
             {"id": "SOW1.AR", "name": "非计费交付物",
              "billing": {"event": "Deliverable sign-off", "fee": 0, "fee_type": "none"},
              "leaves": [
-                 {"id": "SOW1.AR.1a", "name": "设计", "role": "data-modeler",
+                 {"id": "SOW1.AR.1a", "name": "设计", "role": "solution-architect",
                   "duration_days": 9, "estimate": 7, "acceptance": "设计文档评审"}]}
         ]
     }
@@ -126,20 +130,33 @@ def _default_methodology_chain(spec, byid):
 
 
 def build_packages(spec):
-    """返回 (packages 列表, sow_summary_id)。"""
+    """返回 (packages 列表, sow_summary_id)。
+    角色默认不再偏向数据域：summary/wave 默认 solution-architect，
+    叶子默认按 SOW 推断的 domain 走 role_catalog.infer_role，兜底 domain-sme。
+    """
     sow = spec['sow']
     pkgs = []
     meth = spec.get('methodology', 'waterfall')
+    # 从 SOW 抽取自动对齐 domain + 推荐角色（域无关）
+    aligned = rc.align_from_sow(spec)
+    domain = aligned['domain']
+    product = aligned['product']
 
     def P(id, name, **kw):
         o = {'id': id, 'name': name}
         o.update(kw)
         return o
 
+    def role_or_default(role, name):
+        # 显式角色优先；否则按域推断；否则中性兜底 domain-sme
+        r = rc.infer_role(name, domain, explicit_role=role)
+        return r or 'domain-sme'
+
     # summary
     summary = P(sow, spec.get('name', sow),
                 tier='program', summary=True, component='sow' + sow.replace('SOW', '').lower(),
-                role='data-architect',
+                role=spec.get('summary_role') or 'solution-architect',
+                domain=domain,
                 objective=spec.get('objective', ''),
                 scope=spec.get('scope', ''),
                 out_of_scope=spec.get('out_of_scope', ''),
@@ -155,7 +172,8 @@ def build_packages(spec):
     _first_mid = (_first_wave.get('id') + '.M') if _first_wave.get('id') else None
     for g in spec.get('entry_gates') or []:
         p = P(g['id'], g['name'], tier='component', component=summary.get('component'),
-              role=g.get('role', 'requirements-analyst'),
+              role=g.get('role', 'ba'),
+              domain=domain,
               duration=(str(g.get('duration_days', g.get('estimate', 0))) + 'd') if g.get('duration_days') or g.get('estimate') else None,
               estimate=g.get('estimate', 0),
               acceptance=g.get('acceptance', ''),
@@ -170,14 +188,16 @@ def build_packages(spec):
         billing = w.get('billing') or {}
         mid = w['id'] + '.M'  # Pillar 2: 叶子 milestone_ref 目标（须在叶循环前定义）
         p = P(w['id'], w['name'], tier='component', component=summary.get('component'),
-              summary=True, role=w.get('role', 'data-modeler'),
+              summary=True, role=w.get('role', 'solution-architect'),
+              domain=domain,
               methodology=meth,
               objective=w.get('objective', ''),
               dependsOn=w.get('dependsOn'))  # None 时由默认链填充
         pkgs.append(p); byid[w['id']] = p
         for lf in w.get('leaves') or []:
             lp = P(lf['id'], lf['name'], tier='component', component=summary.get('component'),
-                   role=lf.get('role', 'data-modeler'),
+                   role=role_or_default(lf.get('role'), lf['name']),
+                   domain=domain,
                    duration=(str(lf.get('duration_days', lf.get('estimate', 0))) + 'd') if (lf.get('duration_days') or lf.get('estimate')) else None,
                    estimate=lf.get('estimate', 0),
                    acceptance=lf.get('acceptance', ''),
