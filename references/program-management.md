@@ -89,10 +89,10 @@ Aggregation rules (milestone summary package): `estimate` = sum of leaves; `star
 ### Rollup (program = read-only aggregate of sub-projects)
 After sub-projects are updated, the orchestrator refreshes the program view with the cross-file rollup:
 ```
-python3 rollup_subprojects.py <program/project.yaml>
-  → leaf actuals (per sub-project) estimate-weighted into program milestone rows
-  → sub-project ev/ac summed into program ev/ac
-  → writes program.actuals.wbs_progress (milestone keys)
+python3 rollup_subprojects.py --program <program_dir>
+  → reads each subprojects/<sow>/project.yaml (read-only aggregate; master not mutated)
+  → per sub-project: milestone done/total + BAC/EV/AC/EAC/CPI
+  → prints (or --json exports) a program-level aggregate view
 python3 scripts/control_engine.py --project <program.yaml> --as-of <date>
   → program-level health dashboard (CPI/SPI, risk drift, milestone slip, RAID issues, change volume)
 ```

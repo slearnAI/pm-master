@@ -1,5 +1,15 @@
 # Changelog · PM Master v2
 
+## 2.2.15 (2026-07-24)
+
+### 包整备（housekeeping）· 移除根级遗留脚本 + 文档 CLI 对齐
+- **移除两个根级遗留脚本**（不属于运行时脚本目录 `scripts/`，历史遗留在包根）：
+  - `_split_subprojects.py`：一次性迁移助手（把示例数据湖项目群拆成 per-SOW 子项目），含示例硬编码路径；全包零引用，删除。
+  - 根级 `rollup_subprojects.py`：与 `scripts/rollup_subprojects.py` 同名但为**旧的回写式实现**（86 行，positional CLI，估算加权回写 master）。规范版本为 `scripts/rollup_subprojects.py`（125 行，`--program <program_dir>`，只读聚合视图，不改 master）。删除根级重名副本，消除歧义。
+- **文档 CLI 对齐规范版本**：`README.md` §7、`references/program-management.md`、`references/operation-model.md`（2 处）原示例仍用旧的 positional 调用 `rollup_subprojects.py <program/project.yaml>` 并描述「估算加权回写 master」行为；统一改为 `--program <program_dir>`，并将描述更正为**只读聚合视图**（读取各 `subprojects/<sow>/project.yaml`，汇总里程碑 done/total + BAC/EV/AC/EAC/CPI，打印或 `--json` 导出，不改 master）。
+- 说明：上版评审疑似的 CHANGELOG mojibake 经字节核验为**误报**（文件 0 个 U+FFFD，UTF-8 干净）；实为终端 awk 截断多字节字符的显示假象，无需修改。
+- 机密性扫描 exit 0。
+
 ## 2.2.14 (2026-07-24)
 
 ### WorkBuddy 兼容性整备 + 分支治理（main 晋升）

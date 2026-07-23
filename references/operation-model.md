@@ -31,11 +31,11 @@ Aggregation is **unidirectional and scripted** — it always flows sub-project �
 
 ```
 sub-project A  ┐
-sub-project B  ├─►  rollup_subprojects.py <program/project.yaml>
-sub-project C  ┘       → estimates each leaf % up into program milestone rows
-                           (weighted by leaf `estimate`)
-                         → sums sub-project ev / ac into program ev / ac
-                         → writes program.actuals.wbs_progress (milestone keys)
+sub-project B  ├─►  rollup_subprojects.py --program <program_dir>
+sub-project C  ┘       → reads each subprojects/<sow>/project.yaml (read-only)
+                         → per sub-project: milestone done/total + BAC/EV/AC/EAC/CPI
+                         → prints (or --json exports) a program-level aggregate view
+                           (master is NOT mutated)
 ```
 
 - After rollup, run `control_engine.py --project <program.yaml> --as-of <date>` for the program-level
@@ -104,6 +104,6 @@ WBS / actuals）都必须伴随对应交付物的重新渲染，并通过 `scrip
 - [ ] Each SOW/sub-project has its own `project.yaml` (via `init_project.py --parent <program> --sow <id>`)
 - [ ] Component PMs edit **only** their sub-project file
 - [ ] Program `project.yaml` holds charter + `program.projects[]` + milestone rows (`leaves:` lists)
-- [ ] To refresh program view: `rollup_subprojects.py <program.yaml>` → `control_engine.py ...`
+- [ ] To refresh program view: `rollup_subprojects.py --program <program_dir>` → `control_engine.py ...`
 - [ ] To freeze: `baseline.py --freeze` after rollup
 - [ ] No program-level RAID/status/wbs_progress hand-edits
