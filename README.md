@@ -2,9 +2,10 @@
 
 > A **project + program** management skill for PMs in the tech industry. Builder philosophy, executable, with a built-in template library and multi-Agent orchestration, supporting four delivery methodologies: **waterfall / agile / iteration / hybrid**.
 
-- **Version**: 2.1.0
+- **Version**: 2.2.13
 - **License**: MIT
 - **Positioning**: Every project/program request must produce a real artifact (file); advice-only responses are prohibited.
+- **Discipline additions since 2.1.0**: SOW/contract parsing pipeline, executable WBS-decomposition Critic (6-factor self-audit), domain-agnostic role catalog, Operational Artifact Guardrail (OAG), bottom-up authoring & rollup, and a penetrating pre-publish confidentiality scan.
 
 ---
 
@@ -35,6 +36,12 @@ Project delivery in the tech industry often gets stuck on three things: **incons
 | Stage Gate Approval | `gate_engine` evaluates entry criteria + hard gates (execution/closeout) enforce approval, flipping the state machine | Phase transitions |
 | Operational Dual-track Parallel | P2 execution track (domain experts) + P3 monitoring track (`monitoring-agent`) multi-Agent parallel, sharing the source of truth with zero field conflicts | Execution/Monitoring |
 | External Communication & Email Approval | `communication_plan` registers the stakeholder contact book; `communication-agent` drafts, `comm_send.py` enforces an approval gate + audit, with layered configuration (install-time guardrails / project-time data) | Communication/Email |
+| SOW / Contract Parsing Pipeline | `parse_sow.py` turns a confirmed understanding-record (spec) into WBS packages (idempotent, bottom-up estimate rollup, auto dependency chain, billing-milestone mapping), driven by the `sow-parsing-playbook.md` two-channel (text extract + guided Q&A) method | Initiation / SOW-driven |
+| WBS Decomposition Discipline (Critic) | `critic_review.py` — executable 6-factor self-audit (scope traceable / milestone attribution / payment linkage / quantifiable assumption bounds / constraints gated / dependency connectivity); fatal in planning, advisory once baselined | Planning / WBS |
+| Domain-agnostic Role Catalog | `role_catalog.py` single source for 10 technical domains + cross-domain roles; `infer_domain` / `infer_role` / `align_from_sow` — removes data-domain default bias | Any decomposition |
+| Operational Artifact Guardrail (OAG) | `artifact_guard.py` content-hash drift detection — any `project.yaml` change in `operational`/`monitoring` must re-render its deliverable(s); drift = RED escalation + closeout block (Iron Rule #12) | Execution/Monitoring |
+| Bottom-up Authoring & Rollup | Plans/status/RAID/change-control authored at the lowest owning unit (sub-project/SOW); program level is a read-only scripted rollup (`rollup_subprojects.py` / `rollup_program_wbs.py`) — never hand-edited (Iron Rule #11) | Program governance |
+| Pre-publish Confidentiality Scan | `confidentiality_check.py` penetrating scan of the whole pack (text line-match + **byte-level** for binaries/`.pyc`), HIGH-token blocklist + reviewed-safe whitelist; mandatory before pushing to a shared branch | Release / OpSec |
 
 ---
 
@@ -131,11 +138,11 @@ See `lifecycle.md` §6 and `references/phases/*` for details.
 
 ---
 
-## 6. Template Library (35 templates + `_macros.md`)
+## 6. Template Library (37 templates + `_macros.md`)
 
 | Directory | Count | Templates |
 |------|------|------|
-| `common/` | 16 | project_charter, stakeholder_register, raci, communication_plan, raid_log, risk_register, status_report, lessons_learned, closure_report, project_board, milestone_list, change_request, change_log, baseline_record, control_register, control_report |
+| `common/` | 17 | project_charter, stakeholder_register, raci, communication_plan, raid_log, risk_register, status_report, lessons_learned, closure_report, project_board, milestone_list, change_request, change_log, baseline_record, control_register, control_report, sow_kickoff |
 | `waterfall/` | 5 | requirements_spec, wbs, schedule_gantt, stage_gate_review, quality_plan |
 | `agile/` | 5 | product_backlog, sprint_plan, definition_of_done, burndown, retro |
 | `iteration/` | 3 | iteration_plan, iteration_backlog, iteration_review |
@@ -148,24 +155,63 @@ The **data-key contract** for each template is in [`references/templates-index.m
 
 ## 7. Script Quick Reference
 
-All scripts are under `scripts/`, run with `python3`.
+All 28 scripts are under `scripts/`, run with `python3`. Grouped by function.
 
+**Source of truth & scaffolding**
 | Script | Purpose | Example Command |
 |------|------|----------|
-| `init_project.py` | Build workspace + project.yaml | `python3 init_project.py "Project name" --type project --methodology agile --framework scrum [--domain <domain> --product <product>]` |
-| `render.py` | Template + data → Markdown | `python3 render.py --template T --data D.yaml --out O.md` |
+| `init_project.py` | Build workspace + project.yaml (project or program; program adds `--parent`/`--sow`/`--slug` for per-SOW sub-projects) | `python3 init_project.py "Project name" --type project --methodology agile --framework scrum [--domain <domain> --product <product>]` |
+| `project_state.py` | Single source of truth read/write; `migrate` (v1.x→v2 schema) / `checkpoint` (anti-skip); backup-on-overwrite guard | `python3 project_state.py get project.phase --file project.yaml` |
+| `role_catalog.py` | Domain-agnostic role catalog (10 tech domains + cross-domain); `infer_domain` / `infer_role` / `align_from_sow` | imported by dispatch/consistency; `python3 role_catalog.py` to inspect |
+
+**Rendering & export**
+| Script | Purpose | Example Command |
+|------|------|----------|
+| `render.py` | Template + data → Markdown (mini engine; helpers `sev_cell`/`assume_text`/`eq`) | `python3 render.py --template T --data D.yaml --out O.md` |
 | `render_docx.py` | Markdown → DOCX | `python3 render_docx.py O.md [--out O.docx]` |
-| `evm.py` | Earned value analysis | `python3 evm.py --data metrics.yaml` |
+| `rerender_docs.py` | Pure-function re-render from `project.yaml` (wbs / risk_register / program_charter / change_log / raid_log / evm_report / baseline_record / control_register) — kills content drift | `python3 rerender_docs.py --project <project>/project.yaml [--only raid_log]` |
+
+**SOW parsing & WBS decomposition**
+| Script | Purpose | Example Command |
+|------|------|----------|
+| `parse_sow.py` | Understanding-record (spec) → WBS packages (idempotent, bottom-up estimate, dependency chain, `milestone_ref`/billing mapping) | `python3 parse_sow.py --project <project>/project.yaml --spec spec.json` |
+| `dispatch.py` | Expert dispatch plan (audits WBS for missing role / over-threshold; marks satisfied packages `done`) | `python3 dispatch.py --project <project>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]` |
+| `critic_review.py` | Executable WBS Critic — 6-factor decomposition self-audit (fatal in planning, advisory once baselined) | `python3 critic_review.py --project <project>/project.yaml [--strict]` |
+| `sync_wbs.py` | Merge an expert decomposition-patch YAML back into `project.yaml.wbs` (auto parent/child, validates leaf required fields) | `python3 sync_wbs.py --project <project>/project.yaml --patch decomp.yaml` |
+| `build_wbs.py` | Render WBS (decomposition tree `graph TD` + optional dated gantt) from the source of truth | `python3 build_wbs.py --project <project>/project.yaml` |
+
+**Scheduling & analysis**
+| Script | Purpose | Example Command |
+|------|------|----------|
+| `build_schedule.py` | Forward-schedule WBS → schedule/gantt (fortnight granularity, milestone coverage, payment linkage; `--level program` / `--sow` are read-only views) | `python3 build_schedule.py --project <project>/project.yaml [--granularity fortnight]` |
+| `build_sow_kickoff.py` | Per-SOW kickoff artifact (program-level SOW packages only) | `python3 build_sow_kickoff.py --project <program>/project.yaml` |
 | `schedule_health.py` | Critical path / dependencies / float | `python3 schedule_health.py --project <project>/project.yaml` (or `--data schedule.yaml [--start 2025-08-01]`) |
-| `consistency_check.py` | Pre-delivery quality gate (control level, exit 1 = blocker) | `python3 consistency_check.py --project <project>/project.yaml [--strict]` |
+| `evm.py` | Earned value analysis | `python3 evm.py --data metrics.yaml` |
+
+**Quality gates & lifecycle**
+| Script | Purpose | Example Command |
+|------|------|----------|
+| `consistency_check.py` | Pre-delivery quality gate (control level, exit 1 = blocker; integrates critic + billing-milestone + schedule-linkage gates, planning-fatal only) | `python3 consistency_check.py --project <project>/project.yaml [--strict]` |
 | `baseline.py` | Freeze plan as baseline (prerequisite quality gate) | `python3 baseline.py --freeze --project <project>/project.yaml`; `--status` to view status |
-| `control_engine.py` | Operational control engine (periodic inspection against baseline, exit 1 = RED escalation) | `python3 control_engine.py --project <project>/project.yaml [--as-of 2026-08-12] [--json]` |
-| `dispatch.py` | Expert dispatch plan (audits WBS for missing role / over-threshold) | `python3 dispatch.py --project <project>/project.yaml [--threshold 10] [--out dispatch_plan.md] [--json]` |
-| `rollup_program_wbs.py` | Program WBS two-level rollup (milestone level / component level) | `python3 rollup_program_wbs.py <program>/project.yaml [--derive-actuals]` |
-| `project_state.py` | Single source of truth read/write | `python3 project_state.py get project.phase --file project.yaml` |
 | `gate_engine.py` | Stage gate engine (evaluate/approve entry into target phase; hard gates reuse consistency/control) | `python3 gate_engine.py --project <project>/project.yaml --to Execution [--approve "Zhang San(sponsor)"]`; `--status` shows current state and available gates |
-| `test_gate_engine.py` | Stage gate engine unit-test suite (CI gate, 66 assertions covering 4 methodologies × soft/hard gates / rejected / dry-run / --status) | `python3 test_gate_engine.py` (no args; exit code 0 = all pass, 1 = failure, can be wired to CI) |
-| `comm_send.py` | External email approval gate (resolves `communication.contacts[]` recipients by role, requires `--approve` before delegating to backend, writes `governance.communications` audit; `--dry-run` does not actually send) | `python3 comm_send.py --project <project>/project.yaml --to "sponsor,pm" --subject "Milestone achieved" --body-file draft.md --approve "Zhang San(PM)"`; `--dry-run` only reviews |
+| `test_gate_engine.py` | Stage gate engine unit-test suite (CI gate, 66 assertions × 4 methodologies × soft/hard/rejected/dry-run/--status) | `python3 test_gate_engine.py` (exit 0 = all pass) |
+| `confidentiality_check.py` | Penetrating pre-publish scan (text line-match + byte-level for `.pyc`/binaries); HIGH-token blocklist + reviewed whitelist; **mandatory before pushing to a shared branch** | `python3 confidentiality_check.py` (exit 0 = clean) |
+
+**Execution, control & communication**
+| Script | Purpose | Example Command |
+|------|------|----------|
+| `execution_driver.py` | Execution driver — reads WBS state, generates the executable work-package list, tracks sprint/iteration, auto-triggers control inspection | `python3 execution_driver.py --project <project>/project.yaml [--json]` |
+| `control_engine.py` | Operational control engine (periodic inspection against baseline; unified status normalization; skips summary/cancelled; OAG built-in; exit 1 = RED escalation) | `python3 control_engine.py --project <project>/project.yaml [--as-of 2026-08-12] [--json]` |
+| `artifact_guard.py` | OAG content-hash drift detection (`--stamp <key>` records hash for manual/external renders) | `python3 artifact_guard.py --project <project>/project.yaml` |
+| `comm_send.py` | External email approval gate (resolves recipients by role, requires `--approve`, writes `governance.communications` audit; `--dry-run` reviews only) | `python3 comm_send.py --project <project>/project.yaml --to "sponsor,pm" --subject "Milestone achieved" --body-file draft.md --approve "Zhang San(PM)"` |
+| `subagent_check.py` | Validate each sub-agent JSON report against the protocol contract (Iron Rule #10) | `python3 subagent_check.py --report report.json` |
+
+**Program rollup**
+| Script | Purpose | Example Command |
+|------|------|----------|
+| `rollup_program_wbs.py` | Single-file two-level rollup (program = milestone level, component = leaf level; cancelled-status propagation) | `python3 rollup_program_wbs.py <program>/project.yaml [--derive-actuals]` |
+| `rollup_subprojects.py` | Cross-file rollup of per-SOW sub-projects into the program view (read-only aggregate; `eac_vs_bac_var` None-guarded) | `python3 rollup_subprojects.py --program <program>/project.yaml` |
+| `build_subproject.py` | Render a sub-project's RAID / risk register / status report from its own `project.yaml` | `python3 build_subproject.py --project subprojects/<slug>/project.yaml` |
 
 > ⚠️ **Script exception handling**: If a script is missing / path is wrong / arguments are invalid, do not fail silently — give a specific error, and degrade to: ① use `project_state.py` to maintain `project.yaml`; ② use `render.py` to render templates directly; ③ if PyYAML is missing, first run `pip install pyyaml`.
 
@@ -183,6 +229,9 @@ All scripts are under `scripts/`, run with `python3`.
 - **Planning ≠ operationalization (mandatory serial)**: First plan → review → `baseline.py --freeze` → control gate → only then enter execution/monitoring.
 - **Operational control loop**: After entering `operational`, run `control_engine.py` periodically per `control.cadence` to inspect against the baseline; RED escalation exits with code 1 and can be wired to a scheduled alert.
 - **Phase transitions must pass stage gates (mandatory)**: Initiation→Planning→Execution→Monitoring→Closeout advances serially per the state machine; entering `Execution` (G1→2) and `Closeout` (G3→4) are **hard gates** that require `gate_engine.py` evaluation with all automated criteria passing and sponsor approval before flipping `lifecycle_state`; `Monitoring` (G2→3) is a **soft gate** (PM approval). Hard gates cannot be skipped (see `references/phases/*`, `lifecycle.md` §6).
+- **Bottom-up authoring & rollup (Iron Rule #11)**: Plans / status / RAID / change-control are authored at the lowest owning unit (sub-project / SOW). The program level is a **read-only scripted rollup** (`rollup_subprojects.py` cross-file, `rollup_program_wbs.py` single-file two-level) — never a hand-edited parallel source. To correct a program figure, fix the source sub-project and re-run the rollup. Violation → governance drift, false status.
+- **Every operational action must refresh its artifacts — OAG (Iron Rule #12)**: In `operational` / `monitoring`, any change to `project.yaml` (status / EVM / RAID / WBS / actuals) MUST re-render the dependent deliverable(s) and pass `artifact_guard.py` (exit 0). Stale/missing deliverables are a guardrail breach — flagged RED by `control_engine.py` and blocked at closeout by `gate_engine.py`.
+- **Confidentiality gate before shared-branch publish**: Run `confidentiality_check.py` (exit 0) before pushing the pack to a shared branch — it scans all files (including byte-level for `.pyc`) for client/vendor names, absolute paths, and other sensitive tokens.
 
 ---
 
@@ -210,6 +259,9 @@ All scripts are under `scripts/`, run with `python3`.
 |------|--------|
 | `references/orchestration.md` | Multi-Agent orchestration, deciding execution mode |
 | `references/agents.md` | Dispatch dedicated sub-Agents, write briefs |
+| `references/subagent-protocol.md` | Sub-agent JSON report contract (validated by `subagent_check.py`) |
+| `references/operation-model.md` | Bottom-up authoring & read-only rollup operating model (Iron Rule #11) |
+| `references/sow-parsing-playbook.md` | Methodology/contract-agnostic SOW parsing (text + guided Q&A → spec → WBS) |
 | `references/expert-roles.md` | Domain expert role catalog + system prompt |
 | `references/activity-expert-map.md` | Activity→role routing, expert specialization, leaf-package granularity |
 | `references/lifecycle.md` | Phase-deliverable matrix, lifecycle and state machine |
@@ -230,8 +282,18 @@ All scripts are under `scripts/`, run with `python3`.
 
 ## 12. Version & Changes
 
-Changelog history is in [`CHANGELOG.md`](CHANGELOG.md). Current version **2.2.0** (v1.2.0 introduced phase modules P0–P4 and the stage-gate engine `gate_engine.py`; v1.2.1 synced this README; v1.2.2 added the `gate_engine.py` unit-test suite; v1.3.0 added **operational dual-track parallelism** and the **external email approval gate**; v1.3.1 **desensitization**: removed real customer names / vendor names and other sensitive info, unified into code names (Customer A / MPP data warehouse / code name ALPHA) to eliminate legal risk; v1.3.2 further desensitization: de-identified `rollup_program_wbs.py` example mappings (SOW slug suffix stripped / Wave→Stream / removed 客户系统A·客户系统B·示例主题域); v1.3.3 added the English `README.en.md` and established the "Chinese and English bilingual doc sync" rule; v1.3.4 **Mermaid rendering stability + SOW-level WBS mandatory expert breakdown**; v1.3.5 **WBS→schedule deliverables (build_schedule/build_wbs) + per-SOW kickoff (build_sow_kickoff) + risk register color icons (sev_icon)**; v1.3.6 **program-level scheduling (build_schedule --level program) + SOW sub-plan (--sow) + Mermaid milestone syntax fix + portfolio dashboard color icons (sev_icon); OpenClaw English package runtime output anglicized**).
+Full changelog history is in [`CHANGELOG.md`](CHANGELOG.md). Current version **2.2.13**.
 
-> **Doc sync rule**: Every skill change must sync-update both `README.md` (Chinese) and `README.en.md` (English), and stay consistent with `SKILL.md` / `CHANGELOG.md` / version number; the English version is generated from the same source as the pure-English OpenClaw skill package.
+**v2.1.x → v2.2.x arc (highlights):**
+- **v2.1.0** — Merged refactor: v1.3.6 enforced framework + v2 architecture; restored expert-dispatch workflow (Step 2.5); wired the sub-agent protocol (`subagent_check.py`), execution driver, and config knobs; bilingual dual-package (`SKILL.md` / `SKILL.en.md`).
+- **v2.1.1–2.1.8** — Production hardening from live use: `sync_wbs.py` decomposition write-back, WBS decomposition-tree mermaid, program-charter contract/SOW coverage, drift-proof `rerender_docs.py`, `project_state.py` data-loss guard (backup-on-overwrite), severity color icons, and multiple mermaid `&`/invalid-date fixes.
+- **v2.2.0–2.2.6** — SOW/contract parsing pipeline (`sow-parsing-playbook.md` + `parse_sow.py`), billing-milestone integrity gate, WBS→schedule engine (`build_schedule.py` fortnight/coverage/payment-linkage), and scheduling-engine fixes (dependency chains, summary-package zero-duration).
+- **v2.2.2–2.2.4** — Operating model (`operation-model.md`) with Iron Rule #11 (bottom-up authoring & rollup); P0/P1 method-agnostic skeleton; WBS decomposition discipline Pillar 1 (`critic_review.py` 6-factor self-audit) + Pillar 3 (fortnight granularity).
+- **v2.2.9–2.2.10** — Operational Artifact Guardrail (Iron Rule #12, `artifact_guard.py` content-hash drift) integrated into control/gate engines; RAID rendering fixes (`assume_text` helper).
+- **v2.2.11** — Penetrating pre-publish confidentiality scan (`confidentiality_check.py`, byte-level for `.pyc`); mandatory before shared-branch publish.
+- **v2.2.12** — Domain-agnostic role catalog (`role_catalog.py`, 10 tech domains) — removed data-domain default bias.
+- **v2.2.13** — Control-engine robustness (unified status normalization, skip summary/cancelled packages, terminal-lifecycle GREEN) + expanded re-render coverage (change_log / raid_log / evm_report / baseline_record) + rollup None-guards.
+
+> **Doc sync rule**: Every skill change must keep `README.md`, `SKILL.md` / `SKILL.en.md`, `CHANGELOG.md`, `_user_meta.json`, and the version number consistent, and must pass `confidentiality_check.py` (exit 0) before publishing to a shared branch. (Note: a separate `README.en.md` is not currently maintained — this `README.md` is the single English reference.)
 
 _PM Master · Making project management truly "executable."_
