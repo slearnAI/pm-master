@@ -1,5 +1,13 @@
 # Changelog · PM Master v2
 
+## 2.2.14 (2026-07-24)
+
+### WorkBuddy 兼容性整备 + 分支治理（main 晋升）
+- **SKILL.md 自述纠错**：原头注错误声明「this file is English (OpenClaw-compatible)」，实为 WorkBuddy 主控加载的活动清单。改为正确标注 `SKILL.md` = **WorkBuddy edition（活动清单）**，`SKILL.en.md` = OpenClaw 英文版；二者共用 `scripts/`/`templates/`/`references/`，经 `config.yaml` 的 `subagent_mode: team` 选择后端。
+- **版本对齐 2.2.14**：`SKILL.md` / `SKILL.en.md` / `_user_meta.json` / `README.md` 统一至 2.2.14（CHANGELOG 为权威）。
+- **分支治理**：`v2`（当前 WorkBuddy 包）经 **fast-forward** 晋升为 `main` 并设为默认/活动分支；旧 `main`（v1.3.6）已由不可变 tag `v1.3.6` 归档，另建 `archive/v1.3.6-main` 分支便于检索。零历史丢失、无 force-push。
+- 机密性扫描 exit 0。
+
 ## 2.2.13 (2026-07-22)
 
 ### 控制引擎健壮性 + 重渲染覆盖扩展

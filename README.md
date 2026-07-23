@@ -2,7 +2,7 @@
 
 > A **project + program** management skill for PMs in the tech industry. Builder philosophy, executable, with a built-in template library and multi-Agent orchestration, supporting four delivery methodologies: **waterfall / agile / iteration / hybrid**.
 
-- **Version**: 2.2.13
+- **Version**: 2.2.14
 - **License**: MIT
 - **Positioning**: Every project/program request must produce a real artifact (file); advice-only responses are prohibited.
 - **Discipline additions since 2.1.0**: SOW/contract parsing pipeline, executable WBS-decomposition Critic (6-factor self-audit), domain-agnostic role catalog, Operational Artifact Guardrail (OAG), bottom-up authoring & rollup, and a penetrating pre-publish confidentiality scan.
@@ -282,7 +282,7 @@ All 28 scripts are under `scripts/`, run with `python3`. Grouped by function.
 
 ## 12. Version & Changes
 
-Full changelog history is in [`CHANGELOG.md`](CHANGELOG.md). Current version **2.2.13**.
+Full changelog history is in [`CHANGELOG.md`](CHANGELOG.md). Current version **2.2.14**.
 
 **v2.1.x → v2.2.x arc (highlights):**
 - **v2.1.0** — Merged refactor: v1.3.6 enforced framework + v2 architecture; restored expert-dispatch workflow (Step 2.5); wired the sub-agent protocol (`subagent_check.py`), execution driver, and config knobs; bilingual dual-package (`SKILL.md` / `SKILL.en.md`).
