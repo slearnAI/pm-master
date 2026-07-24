@@ -1,5 +1,29 @@
 # Changelog · PM Master v2
 
+## 2.2.14 (2026-07-24)
+
+### WorkBuddy 兼容性整备 + 分支治理（main 晋升）
+- **SKILL.md 自述纠错**：原头注错误声明「this file is English (OpenClaw-compatible)」，实为 WorkBuddy 主控加载的活动清单。改为正确标注 `SKILL.md` = **WorkBuddy edition（活动清单）**，`SKILL.en.md` = OpenClaw 英文版；二者共用 `scripts/`/`templates/`/`references/`，经 `config.yaml` 的 `subagent_mode: team` 选择后端。
+- **版本对齐 2.2.14**：`SKILL.md` / `SKILL.en.md` / `_user_meta.json` / `README.md` 统一至 2.2.14（CHANGELOG 为权威）。
+- **分支治理**：`v2`（当前 WorkBuddy 包）经 **fast-forward** 晋升为 `main` 并设为默认/活动分支；旧 `main`（v1.3.6）已由不可变 tag `v1.3.6` 归档，另建 `archive/v1.3.6-main` 分支便于检索。零历史丢失、无 force-push。
+- 机密性扫描 exit 0。
+
+## 2.2.13 (2026-07-22)
+
+### 控制引擎健壮性 + 重渲染覆盖扩展
+- **根因**：真实项目运行暴露 4 类状态/渲染错位，导致控制门误报与文档漂移。
+- **control_engine.py**：
+  - 新增统一状态常量 `DONE/CLOSED/CANCELLED_STATES` 与 `_norm_status()` 归一（兼容中英文同义词），杜绝各支柱内联 hardcode 产生的「已降降」类错字。
+  - 进度汇总跳过 `summary` 包（其估算是子叶子的 rollup，纳入会重复计数）。
+  - 已取消/降级/终止/移出范围的包与风险不计入逾期与活跃漂移（非在办工作/已关闭不误报）。
+  - 新增 `TERMINAL_LS`（closed/closeout/archived 等）：程序/项目进入终态后控制门判 GREEN、不再误报 `gate_not_operational`。
+- **rerender_docs.py**：
+  - 新增 `change_log`（title→description 映射，杜绝事实源有 CR 却渲染空壳）、`raid_log`（dict 假设自动展平为字符串）、`evm_report`（调用 `evm.py` 按现值重算）、`baseline_record` + `control_register` 重渲染。
+  - `--only` 选项扩展覆盖上述类型。
+- **rollup_program_wbs.py**：新增 `_rollup_status()`，叶子包全为取消/终止态时里程碑行携带 `cancelled`，避免控制引擎误报逾期。
+- **rollup_subprojects.py**：`eac_vs_bac_var` 为 None 时回退 `n/a`，避免 None 格式化崩溃。
+- 验证：对示例客户项目复跑控制引擎/重渲染，原误报消失；机密性扫描 exit 0。
+
 ## 2.2.12 (2026-07-21)
 - **域无关 + SOW 自动对齐**：消除开箱即偏向数据域的硬编码默认（`data-architect`/`etl-engineer`/`data-modeler`/`requirements-analyst`）。
   - 新增 `scripts/role_catalog.py`（单一事实源）：覆盖 10 个技术域（data-platform / software-dev / cloud-infra / ai-ml / cybersecurity / product / qa / integration / erp / biz-analytics）+ 跨域角色；提供 `infer_domain(text)` / `infer_role(name, domain)` / `specialize()` / `align_from_sow(spec)`。

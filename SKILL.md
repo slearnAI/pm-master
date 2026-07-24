@@ -5,7 +5,7 @@ license: MIT
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep,Agent,TaskCreate,TaskUpdate,TaskList,WebFetch,WebSearch
 metadata:
   display_name: "PM Master · Project & Program Management"
-  version: "2.2.12"
+  version: "2.2.14"
   category: productivity
 ---
 

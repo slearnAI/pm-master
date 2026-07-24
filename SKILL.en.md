@@ -5,7 +5,7 @@ license: MIT
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep,Agent,TaskCreate,TaskUpdate,TaskList,WebFetch,WebSearch
 metadata:
   display_name: "PM Master · Project & Program Management"
-  version: "2.2.12"
+  version: "2.2.14"
   category: productivity
 ---
 
@@ -16,9 +16,10 @@ explicit input/output/verification and must not be skipped or reduced to advice.
 framework", **restores v1.3.6's expert-dispatch workflow**, and **wires up the sub-agent protocol /
 execution driver / configuration knobs that v2 only claimed**, eliminating v2's deadlock and paper features.
 
-> Bilingual: this file is English (OpenClaw-compatible). The Chinese edition `SKILL.md` (WorkBuddy-compatible)
-> is logically identical — only the description language differs. Both editions share the same `scripts/`,
-> `templates/`, `references/`, and switch backends via `config.yaml`.
+> Packaging: this `SKILL.en.md` is the **OpenClaw-compatible English edition**. `SKILL.md` is the
+> WorkBuddy edition (the active manifest WorkBuddy loads), logically identical and differing only in
+> manifest packaging and default execution backend. Both editions share the same `scripts/`, `templates/`,
+> and `references/`, and select the sub-agent backend via `config.yaml`.
 
 ## 0. Execution Backend (portable across platforms · M1)
 
